@@ -26,10 +26,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      request.headers.get('origin') ||
-      'http://localhost:3000'
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
+    const origin = forwardedHost
+      ? `${forwardedProto}://${forwardedHost}`
+      : process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
 
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,

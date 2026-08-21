@@ -38,18 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     loadProfile();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
         setProfile(null);
-        router.push('/login');
-      } else {
+      } else if (session?.user) {
         loadProfile();
       }
     });
     return () => {
       subscription?.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

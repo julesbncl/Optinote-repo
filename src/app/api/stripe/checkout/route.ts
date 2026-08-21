@@ -58,10 +58,11 @@ export async function POST(request: NextRequest) {
     const isAnnual = selectedPlan.id === 'annual'
     const interval = isAnnual ? 'year' : 'month'
 
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      request.headers.get('origin') ||
-      'http://localhost:3000'
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
+    const origin = forwardedHost
+      ? `${forwardedProto}://${forwardedHost}`
+      : process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
 
     const dynamicPriceData = {
       price_data: {

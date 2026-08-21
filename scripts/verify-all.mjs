@@ -25,17 +25,17 @@ const rootDir = process.cwd()
 // 1. Vérification des fichiers d'environnement
 console.log('1️⃣  Vérification de la configuration & environnement...')
 const envLocalExists = fs.existsSync(path.join(rootDir, '.env.local'))
-assert(envLocalExists, 'Fichier .env.local présent')
+const envExampleExists = fs.existsSync(path.join(rootDir, '.env.example'))
+assert(envLocalExists || envExampleExists, 'Fichier de configuration (.env.local ou .env.example) présent')
 
-if (envLocalExists) {
-  const envContent = fs.readFileSync(path.join(rootDir, '.env.local'), 'utf8')
-  assert(envContent.includes('NEXT_PUBLIC_SUPABASE_URL='), 'NEXT_PUBLIC_SUPABASE_URL configuré')
-  assert(envContent.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY='), 'NEXT_PUBLIC_SUPABASE_ANON_KEY configuré')
-  assert(envContent.includes('OPENAI_API_KEY='), 'OPENAI_API_KEY configuré')
-  assert(envContent.includes('STRIPE_PRICE_ID='), 'STRIPE_PRICE_ID configuré (price_1U6SrGrWM4B48KwBLvdM5LSU)')
-  assert(envContent.includes('STRIPE_SECRET_KEY='), 'STRIPE_SECRET_KEY configuré')
-  assert(envContent.includes('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY='), 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY configuré')
-}
+const envFile = envLocalExists ? '.env.local' : '.env.example'
+const envContent = fs.readFileSync(path.join(rootDir, envFile), 'utf8')
+assert(envContent.includes('NEXT_PUBLIC_SUPABASE_URL='), 'NEXT_PUBLIC_SUPABASE_URL configuré')
+assert(envContent.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY='), 'NEXT_PUBLIC_SUPABASE_ANON_KEY configuré')
+assert(envContent.includes('OPENAI_API_KEY='), 'OPENAI_API_KEY configuré')
+assert(envContent.includes('STRIPE_PRICE_ID='), 'STRIPE_PRICE_ID configuré (price_1U6SrGrWM4B48KwBLvdM5LSU)')
+assert(envContent.includes('STRIPE_SECRET_KEY='), 'STRIPE_SECRET_KEY configuré')
+assert(envContent.includes('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY='), 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY configuré')
 
 // 2. Vérification des routes de l'application
 console.log('\n2️⃣  Vérification des routes et des pages...')
