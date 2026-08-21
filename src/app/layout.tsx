@@ -20,8 +20,12 @@ export const metadata: Metadata = {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32' },
     ],
-    apple: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
   },
   keywords: [
     'lycée',
