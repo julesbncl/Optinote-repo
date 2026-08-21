@@ -32,7 +32,7 @@ export function PaywallGuard({
   }
 
   return (
-    <div className="relative">
+    <div className="relative isolate">
       {/* Blurred background preview */}
       <div className="filter blur-md pointer-events-none select-none opacity-40">
         {children}

@@ -956,8 +956,8 @@ export default function CampusHubPage() {
           </div>
 
           {/* 2. AU MILIEU : ENCADRÉ MODERNE, VISUEL & ATTHRAYANT "MES MESSAGES PRIVÉS" */}
-          <Link href="/campus/messages" className="block w-full group">
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-700 to-primary-700 hover:from-purple-800 hover:to-primary-800 text-white shadow-md hover:shadow-xl transition-all duration-200 border border-purple-400/30 relative overflow-hidden group-hover:scale-[1.01] cursor-pointer">
+          <Link href="/campus/messages" className="block w-full group isolate">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-700 to-primary-700 hover:from-purple-800 hover:to-primary-800 text-white shadow-md hover:shadow-xl transition-all duration-200 border border-purple-400/30 relative overflow-hidden cursor-pointer">
               {/* Effet d'arrière-plan avec reflets doux */}
               <div className="absolute top-0 right-0 -mt-4 -mr-4 w-28 h-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
