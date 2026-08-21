@@ -1,0 +1,47 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="optinote-icon-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#EEF2FF" />
+      <stop offset="100%" stopColor="#E0E7FF" />
+    </linearGradient>
+    <linearGradient id="optinote-icon-ring" x1="6" y1="42" x2="42" y2="6" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#4F46E5" />
+      <stop offset="45%" stopColor="#6366F1" />
+      <stop offset="80%" stopColor="#2563EB" />
+      <stop offset="100%" stopColor="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="optinote-icon-fold" x1="26" y1="6" x2="42" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#38BDF8" />
+      <stop offset="60%" stopColor="#818CF8" />
+      <stop offset="100%" stopColor="#C084FC" />
+    </linearGradient>
+  </defs>
+
+  {/* Background rounded squircle */}
+  <rect width="48" height="48" rx="12" fill="url(#optinote-icon-bg)" />
+  <rect x="0.5" y="0.5" width="47" height="47" rx="11.5" stroke="#C7D2FE" stroke-opacity="0.8" />
+
+  {/* Geometric "O" Ring Loop */}
+  <path
+    d="M 24 9 C 15.2 9 8 16.2 8 25 C 8 33.8 15.2 41 24 41 C 32.8 41 40 33.8 40 25 C 40 22 39.1 19.2 37.7 16.8"
+    stroke="url(#optinote-icon-ring)"
+    stroke-width="5.5"
+    stroke-linecap="round"
+  />
+
+  {/* Inner focus disk */}
+  <circle cx="24" cy="25" r="3" fill="url(#optinote-icon-ring)" />
+
+  {/* Origami Page-Turn & Growth Arrow */}
+  <path
+    d="M 25 7 L 39 21 L 28 21 C 26.34 21 25 19.66 25 18 Z"
+    fill="url(#optinote-icon-fold)"
+  />
+  <path
+    d="M 26 8.5 L 37.5 20"
+    stroke="#FFFFFF"
+    stroke-width="1.2"
+    stroke-linecap="round"
+    stroke-opacity="0.85"
+  />
+</svg>

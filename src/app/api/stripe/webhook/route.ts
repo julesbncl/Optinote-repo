@@ -1,0 +1,183 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import { stripe } from '@/lib/stripe/server'
+import { createClient } from '@supabase/supabase-js'
+import type Stripe from 'stripe'
+
+// Initialize a direct Supabase Admin client with Service Role to bypass RLS during webhook handling
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    'placeholder-key'
+)
+
+export async function POST(request: NextRequest) {
+  const body = await request.text()
+  const signature = (await headers()).get('stripe-signature')
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  let event: Stripe.Event
+
+  try {
+    if (webhookSecret && signature) {
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    } else {
+      // For local testing without webhook secret
+      event = JSON.parse(body) as Stripe.Event
+    }
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message)
+    return NextResponse.json(
+      { error: `Webhook Error: ${err.message}` },
+      { status: 400 }
+    )
+  }
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        const userId = session.metadata?.supabase_user_id
+        const planTier = session.metadata?.plan_tier || 'monthly'
+
+        if (userId) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              stripe_customer_id: session.customer as string,
+              subscription_tier: planTier,
+              subscription_status: 'active',
+              is_pro: true,
+            })
+            .eq('id', userId)
+        }
+        break
+      }
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        const userId = subscription.metadata?.supabase_user_id
+        const planTier = (subscription.metadata?.plan_tier as any) || 'monthly'
+        const interval =
+          (subscription.metadata?.billing_interval as any) ||
+          (subscription.items.data[0]?.plan?.interval as any) ||
+          'month'
+
+        const status = subscription.status
+        const isActive = status === 'active' || status === 'trialing'
+        const currentPeriodEnd = new Date(
+          (subscription as any).current_period_end * 1000
+        ).toISOString()
+        const currentPeriodStart = new Date(
+          (subscription as any).current_period_start * 1000
+        ).toISOString()
+
+        // 1. If we have userId, update profiles directly
+        if (userId) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              stripe_customer_id: subscription.customer as string,
+              subscription_tier: isActive ? planTier : 'free',
+              subscription_status: status,
+              is_pro: isActive,
+              subscription_current_period_end: currentPeriodEnd,
+            })
+            .eq('id', userId)
+        } else {
+          // Lookup by stripe_customer_id
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              subscription_tier: isActive ? planTier : 'free',
+              subscription_status: status,
+              is_pro: isActive,
+              subscription_current_period_end: currentPeriodEnd,
+            })
+            .eq('stripe_customer_id', subscription.customer as string)
+        }
+
+        // 2. Upsert in subscriptions table (optional table)
+        if (userId) {
+          try {
+            await supabaseAdmin.from('subscriptions').upsert({
+              id: subscription.id,
+              user_id: userId,
+              status: status,
+              price_id: subscription.items.data[0]?.price.id || 'price_custom',
+              plan_tier: planTier,
+              billing_interval: interval,
+              amount: subscription.items.data[0]?.price.unit_amount || 0,
+              currency: subscription.currency || 'eur',
+              current_period_start: currentPeriodStart,
+              current_period_end: currentPeriodEnd,
+              cancel_at_period_end: subscription.cancel_at_period_end || false,
+              updated_at: new Date().toISOString(),
+            })
+          } catch (subErr) {
+            console.warn('Subscriptions table upsert warning:', subErr)
+          }
+        }
+        break
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const customerId = subscription.customer as string
+
+        // Downgrade profile to free
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            subscription_tier: 'free',
+            subscription_status: 'canceled',
+            is_pro: false,
+          })
+          .eq('stripe_customer_id', customerId)
+
+        // Update subscriptions record (optional)
+        try {
+          await supabaseAdmin
+            .from('subscriptions')
+            .update({
+              status: 'canceled',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', subscription.id)
+        } catch (subErr) {
+          console.warn('Subscriptions table update warning:', subErr)
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        const customerId = invoice.customer as string
+
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            subscription_status: 'past_due',
+            is_pro: false,
+          })
+          .eq('stripe_customer_id', customerId)
+        break
+      }
+
+      default:
+        // Other events ignored
+        break
+    }
+
+    return NextResponse.json({ received: true })
+  } catch (error: any) {
+    console.error('Error processing webhook event:', error)
+    return NextResponse.json(
+      { error: 'Webhook handler failed' },
+      { status: 500 }
+    )
+  }
+}

@@ -1,26 +1,247 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ═══════════════════════════════════════════════════════
+   OptiNote — Design System Tokens
+   Style: Minimaliste premium (Notion/Stripe)
+   Palette: Indigo/Violet + Neutrals
+   ═══════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Primary (Indigo) ── */
+  --color-primary-50: #EEF2FF;
+  --color-primary-100: #E0E7FF;
+  --color-primary-200: #C7D2FE;
+  --color-primary-300: #A5B4FC;
+  --color-primary-400: #818CF8;
+  --color-primary-500: #6366F1;
+  --color-primary-600: #4F46E5;
+  --color-primary-700: #4338CA;
+  --color-primary-800: #3730A3;
+  --color-primary-900: #312E81;
+
+  /* ── Accent (Violet) ── */
+  --color-accent-400: #A78BFA;
+  --color-accent-500: #8B5CF6;
+  --color-accent-600: #7C3AED;
+
+  /* ── Success ── */
+  --color-success-50: #F0FDF4;
+  --color-success-500: #22C55E;
+  --color-success-600: #16A34A;
+
+  /* ── Warning ── */
+  --color-warning-50: #FFFBEB;
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+
+  /* ── Danger ── */
+  --color-danger-50: #FEF2F2;
+  --color-danger-500: #EF4444;
+  --color-danger-600: #DC2626;
+
+  /* ── Neutrals ── */
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F8FAFC;
+  --color-surface-tertiary: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-border-hover: #CBD5E1;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #94A3B8;
+  --color-text-inverse: #FFFFFF;
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+
+  /* ── Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-full: 9999px;
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Spacing / Layout ── */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
+  --bottom-nav-height: 72px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ═══════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-secondary);
+    line-height: 1.6;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-900);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ═══════════════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════════════ */
+
+@layer utilities {
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Card hover animation */
+  .card-hover {
+    transition: all var(--transition-normal);
+  }
+
+  .card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-accent-500));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Skeleton animation */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-surface-tertiary);
+    border-radius: var(--radius-md);
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 100%
+    );
+    animation: skeleton-shimmer 1.5s infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* Fade in animation */
+  .fade-in {
+    animation: fadeIn var(--transition-slow) ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Slide up animation */
+  .slide-up {
+    animation: slideUp var(--transition-slow) ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scale in animation for modals */
+  .scale-in {
+    animation: scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* No scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-bottom {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Hide Next.js dev indicators */
+  nextjs-portal,
+  [data-nextjs-toast],
+  [data-nextjs-dev-overlay],
+  [data-nextjs-dialog-overlay] {
+    display: none !important;
+  }
 }

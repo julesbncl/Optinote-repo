@@ -1,0 +1,22 @@
+// Dictionnaire de termes sensibles / insultants pour la modération anti-harcèlement en milieu scolaire
+export const BLOCKED_KEYWORDS = [
+  'fdp',
+  'connard',
+  'salope',
+  'pute',
+  'encule',
+  'batard',
+  'suicide',
+  'nique',
+  'ta gueule',
+  'ferme ta gueule',
+  'creve',
+  'sale noir',
+  'sale arabe',
+  'sale juif',
+  'sale blanc',
+  'pd',
+  'tapette',
+  'grosse vache',
+  'merde',
+]
