@@ -77,7 +77,7 @@ export async function sendNotificationEmail(
 
   return sendEmail({
     to,
-    from: NOREPLY_EMAIL_FROM,
+    from: DEFAULT_EMAIL_FROM,
     subject: `OptiNote : ${title}`,
     html,
   })
