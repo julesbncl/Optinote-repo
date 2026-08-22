@@ -16,17 +16,6 @@ export const metadata: Metadata = {
   },
   description:
     "L'application tout-en-un pour les lycéens : planning IA, fiches de révision, simulateur de notes et messages pro pour tes professeurs.",
-  icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32' },
-    ],
-    shortcut: '/favicon.svg',
-    apple: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-    ],
-  },
   keywords: [
     'lycée',
     'révision',
