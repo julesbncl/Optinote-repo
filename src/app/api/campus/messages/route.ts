@@ -4,12 +4,20 @@ import { moderateMessage } from '@/lib/moderation/filter'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
+import { sendMessageSchema } from '@/lib/validators/campus'
+
+import { z } from 'zod'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const channelId = searchParams.get('channelId')
-    const receiverId = searchParams.get('receiverId')
+    const rawChannelId = searchParams.get('channelId')
+    const rawReceiverId = searchParams.get('receiverId')
+
+    const uuidSchema = z.string().uuid()
+
+    const channelId = rawChannelId && uuidSchema.safeParse(rawChannelId).success ? rawChannelId : null
+    const receiverId = rawReceiverId && uuidSchema.safeParse(rawReceiverId).success ? rawReceiverId : null
 
     const supabase = await createClient()
     const {
@@ -96,11 +104,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { channelId, receiverId, content } = body
-
-    if ((!channelId && !receiverId) || !content || content.trim().length === 0) {
-      return NextResponse.json({ error: 'Message vide ou destinataire manquant' }, { status: 400 })
+    const parsed = sendMessageSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Données de message invalides' },
+        { status: 400 }
+      )
     }
+
+    const { channelId, receiverId, content } = parsed.data
 
     // Modération automatique anti-harcèlement
     const moderation = moderateMessage(content)

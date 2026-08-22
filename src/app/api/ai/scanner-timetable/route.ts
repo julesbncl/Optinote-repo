@@ -5,6 +5,8 @@ import { PROMPTS } from '@/lib/ai/prompts'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 
+import { scannerTimetableSchema } from '@/lib/validators/ai'
+
 export const maxDuration = 60 // 60s timeout for vision processing
 
 // Nettoie et formate les heures (ex: "8h00" -> "08:00", "8:00" -> "08:00")
@@ -46,16 +48,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Parse and Validate Request Payload
+    // 3. Parse and Validate Request Payload with Zod
     const body = await request.json()
-    const { imageUrl } = body
-
-    if (!imageUrl || typeof imageUrl !== 'string') {
+    const parsed = scannerTimetableSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Photo requise pour le scan de l’emploi du temps.' },
+        { error: parsed.error.issues[0]?.message || 'Image de l’emploi du temps requise' },
         { status: 400 }
       )
     }
+
+    const { imageUrl } = parsed.data
 
     // 4. Execute GPT-4o Vision call
     if (process.env.OPENAI_API_KEY) {

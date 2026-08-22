@@ -49,7 +49,7 @@ export function PaywallModal({
     campus:
       'Rejoins les salons de discussion de tes spécialités, échange avec tes camarades de lycée et utilise la carte.',
     general:
-      'Passe à l’accès illimité dès 5,99 € / mois pour booster tes résultats et décrocher ton Bac avec mention.',
+      'Passe à l’accès illimité dès 4,99 € / mois pour booster tes résultats et décrocher ton Bac avec mention.',
   }
 
   const handlePasserPro = async () => {
@@ -158,7 +158,7 @@ export function PaywallModal({
             onClick={onClose}
             className="block text-[9.5px] sm:text-xs font-semibold text-text-secondary hover:text-primary-600 transition-colors hover:underline pt-0.5"
           >
-            Voir le détail des formules (dès 5,99 € / mois)
+            Voir le détail des formules (dès 4,99 € / mois)
           </Link>
         </div>
       </div>

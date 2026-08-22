@@ -391,13 +391,13 @@ export function DashboardPlanningGrid({
             </div>
             <p className="text-[9.5px] text-slate-600 leading-snug">
               Génère automatiquement tes créneaux de révision adaptés à ton emploi du temps.
+              <Link href="/pricing" className="block pt-0.5">
+                <span className="inline-flex items-center gap-1 text-[10.5px] font-black px-3.5 py-1 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-sm hover:opacity-95 transition-opacity">
+                  <span>Passer Pro (dès 4,99 €)</span>
+                  <ChevronRight className="h-3 w-3" />
+                </span>
+              </Link>
             </p>
-            <Link href="/pricing" className="block pt-0.5">
-              <span className="inline-flex items-center gap-1 text-[10.5px] font-black px-3.5 py-1 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-sm hover:opacity-95 transition-opacity">
-                <span>Passer Pro (dès 5,99 €)</span>
-                <ChevronRight className="h-3 w-3" />
-              </span>
-            </Link>
           </div>
         </div>
       )}

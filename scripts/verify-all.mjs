@@ -34,6 +34,7 @@ assert(envContent.includes('NEXT_PUBLIC_SUPABASE_URL='), 'NEXT_PUBLIC_SUPABASE_U
 assert(envContent.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY='), 'NEXT_PUBLIC_SUPABASE_ANON_KEY configuré')
 assert(envContent.includes('OPENAI_API_KEY='), 'OPENAI_API_KEY configuré')
 assert(envContent.includes('STRIPE_PRICE_ID='), 'STRIPE_PRICE_ID configuré (price_1U6SrGrWM4B48KwBLvdM5LSU)')
+assert(envContent.includes('STRIPE_PRICE_ID_ANNUAL='), 'STRIPE_PRICE_ID_ANNUAL configuré (price_1U7H5KRwM4B48KWbDoLCFGzq)')
 assert(envContent.includes('STRIPE_SECRET_KEY='), 'STRIPE_SECRET_KEY configuré')
 assert(envContent.includes('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY='), 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY configuré')
 

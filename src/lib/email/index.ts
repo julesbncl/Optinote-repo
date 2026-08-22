@@ -1,5 +1,10 @@
-import { resend, DEFAULT_EMAIL_FROM, NOREPLY_EMAIL_FROM } from './resend'
-import { getWelcomeEmailHtml, getNotificationEmailHtml } from './templates'
+import { resend, DEFAULT_EMAIL_FROM } from './resend'
+import {
+  getWelcomeEmailHtml,
+  getNotificationEmailHtml,
+  getVerificationEmailHtml,
+  type VerificationEmailProps,
+} from './templates'
 
 export interface SendEmailOptions {
   to: string | string[]
@@ -8,21 +13,34 @@ export interface SendEmailOptions {
   text?: string
   from?: string
   replyTo?: string
+  timeoutMs?: number
+}
+
+export interface SendEmailResult {
+  success: boolean
+  messageId?: string
+  error?: string
+  latencyMs?: number
 }
 
 /**
- * Envoie un email générique via Resend
+ * Envoie un email transactionnel générique via Resend avec gestion de timeout et logs structurés
  */
 export async function sendEmail({
   to,
   subject,
   html,
   text,
-  from = DEFAULT_EMAIL_FROM,
+  from = 'OptiNote <contact@optinote.fr>',
   replyTo = 'contact@optinote.fr',
-}: SendEmailOptions) {
+  timeoutMs = 6000,
+}: SendEmailOptions): Promise<SendEmailResult> {
+  const startTime = Date.now()
+  const recipient = Array.isArray(to) ? to.join(', ') : to
+
   try {
-    const data = await resend.emails.send({
+    // Timeout safeguard pour éviter tout blocage réseau prolongé
+    const sendPromise = resend.emails.send({
       from,
       to,
       subject,
@@ -31,14 +49,93 @@ export async function sendEmail({
       replyTo,
     })
 
-    return { success: true, data }
+    const timeoutPromise = new Promise<{ data: null; error: { message: string; name: string } }>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout de l'API Resend après ${timeoutMs}ms`)), timeoutMs)
+    )
+
+    const response = (await Promise.race([sendPromise, timeoutPromise])) as any
+
+    const latencyMs = Date.now() - startTime
+
+    // Resend SDK renvoie { data, error } au lieu de lever une exception
+    if (response?.error) {
+      console.error(`[Email Service] ❌ Échec envoi à ${recipient} (${latencyMs}ms):`, response.error)
+      return {
+        success: false,
+        error: response.error?.message || 'Erreur lors de l’envoi Resend',
+        latencyMs,
+      }
+    }
+
+    const messageId = response?.data?.id
+    console.log(`[Email Service] ✅ Email envoyé avec succès à ${recipient} | ID: ${messageId} | ${latencyMs}ms`)
+
+    return {
+      success: true,
+      messageId,
+      latencyMs,
+    }
   } catch (error: any) {
-    console.error('❌ Erreur lors de l’envoi de l’email avec Resend:', error)
+    const latencyMs = Date.now() - startTime
+    const errorMessage = error?.message || 'Erreur inattendue lors de l’envoi de l’email'
+    console.error(`[Email Service] ❌ Exception lors de l’envoi à ${recipient} (${latencyMs}ms):`, errorMessage)
+
     return {
       success: false,
-      error: error?.message || 'Erreur inattendue lors de l’envoi de l’email',
+      error: errorMessage,
+      latencyMs,
     }
   }
+}
+
+/**
+ * Envoie l'email de vérification de compte OptiNote avec lien sécurisé unique
+ */
+export async function sendVerificationEmail(
+  to: string,
+  options: {
+    verificationUrl: string
+    name?: string
+    expiresInHours?: number
+  }
+): Promise<SendEmailResult> {
+  const html = getVerificationEmailHtml({
+    name: options.name,
+    verificationUrl: options.verificationUrl,
+    expiresInHours: options.expiresInHours || 24,
+  })
+
+  return sendEmail({
+    to,
+    from: 'OptiNote <contact@optinote.fr>',
+    subject: 'Vérifie ton adresse email — OptiNote 🚀',
+    html,
+  })
+}
+
+/**
+ * Envoi non-bloquant (fire-and-forget) en arrière-plan pour le flux d'inscription.
+ * Ne bloque pas la réponse HTTP de l'inscription si l'API Resend est ralentie.
+ */
+export function sendVerificationEmailAsync(
+  to: string,
+  options: {
+    verificationUrl: string
+    name?: string
+    expiresInHours?: number
+  }
+): void {
+  // Exécution asynchrone découplée
+  Promise.resolve().then(async () => {
+    try {
+      const result = await sendVerificationEmail(to, options)
+      if (!result.success) {
+        console.warn(`[Email Async Worker] ⚠️ Avertissement : Impossible d'envoyer l'email de vérification à ${to}: ${result.error}`)
+      }
+    } catch (err) {
+      console.error(`[Email Async Worker] 💥 Erreur d'arrière-plan sur l'envoi de vérification à ${to}:`, err)
+    }
+  })
 }
 
 /**
@@ -52,7 +149,7 @@ export async function sendWelcomeEmail(to: string, name?: string) {
 
   return sendEmail({
     to,
-    from: DEFAULT_EMAIL_FROM,
+    from: 'OptiNote <contact@optinote.fr>',
     subject: 'Bienvenue sur OptiNote 🚀 Ton espace de révision est prêt !',
     html,
   })
@@ -77,7 +174,7 @@ export async function sendNotificationEmail(
 
   return sendEmail({
     to,
-    from: DEFAULT_EMAIL_FROM,
+    from: 'OptiNote <contact@optinote.fr>',
     subject: `OptiNote : ${title}`,
     html,
   })
@@ -89,14 +186,16 @@ export async function sendNotificationEmail(
 export async function sendTestEmail(to: string) {
   return sendEmail({
     to,
-    from: DEFAULT_EMAIL_FROM,
+    from: 'OptiNote <contact@optinote.fr>',
     subject: 'Test de configuration Resend — OptiNote ✅',
     html: `
       <div style="font-family: sans-serif; padding: 20px; color: #0F172A;">
         <h2>Test d'intégration Resend réussi ! 🚀</h2>
         <p>Ce message confirme que ton domaine <strong>optinote.fr</strong> et ta clé API Resend sont parfaitement connectés à OptiNote.</p>
+        <p style="color: #64748B; font-size: 12px;">Expéditeur : OptiNote &lt;contact@optinote.fr&gt;</p>
         <p style="color: #64748B; font-size: 12px;">Date et heure du test : ${new Date().toLocaleString('fr-FR')}</p>
       </div>
     `,
   })
 }
+

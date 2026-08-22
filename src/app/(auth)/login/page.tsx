@@ -35,6 +35,9 @@ function LoginForm() {
       setErrorMessage('Le lien de confirmation est invalide ou a expiré. Connecte-toi ou demande un nouveau lien.')
     } else if (errorParam === 'auth') {
       setErrorMessage('Erreur d’authentification. Veuillez réessayer.')
+    } else if (errorParam === 'rate_limit') {
+      setErrorMessage('Trop de tentatives de connexion consécutives. Par mesure de sécurité, veuillez patienter une minute avant de réessayer.')
+      toast.error('Trop de tentatives. Veuillez patienter.')
     }
   }, [searchParams])
 

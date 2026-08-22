@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Sparkles,
@@ -12,16 +12,63 @@ import {
   ArrowRight,
   CreditCard,
   ChevronDown,
+  Tag,
+  Check,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
-import { PRICING_PLANS } from '@/lib/constants'
+import {
+  PRICING_PLANS,
+  VALID_PROMO_CODES,
+  PROMO_DISCOUNT_PERCENT,
+  getDiscountedPrice,
+  formatPrice,
+} from '@/lib/constants'
 import toast from 'react-hot-toast'
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+
+  // Gestion du code promo d'affiliation (-15%)
+  const [promoInput, setPromoInput] = useState('')
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
+
+  // Détection automatique du code promo via URL (?promo=, ?ref=, ?code=)
+  useEffect(() => {
+    const codeParam = searchParams.get('promo') || searchParams.get('ref') || searchParams.get('code')
+    if (codeParam) {
+      const clean = codeParam.trim().toUpperCase()
+      if ((VALID_PROMO_CODES as readonly string[]).includes(clean)) {
+        setAppliedPromo(clean)
+        setPromoInput(clean)
+        toast.success(`Code promo ${clean} activé : -${PROMO_DISCOUNT_PERCENT}% sur ton abonnement ! 🎉`)
+      }
+    }
+  }, [searchParams])
+
+  const isPromoApplied = Boolean(appliedPromo)
+
+  function handleApplyPromo(e: React.FormEvent) {
+    e.preventDefault()
+    const cleanCode = promoInput.trim().toUpperCase()
+    if (!cleanCode) return
+
+    if (VALID_PROMO_CODES.includes(cleanCode as any)) {
+      setAppliedPromo(cleanCode)
+      toast.success(`Code promo ${cleanCode} appliqué : -${PROMO_DISCOUNT_PERCENT}% sur tous les abonnements ! 🎉`)
+    } else {
+      toast.error('Code promo ou d’affiliation invalide.')
+    }
+  }
+
+  function handleRemovePromo() {
+    setAppliedPromo(null)
+    setPromoInput('')
+    toast.success('Code promo retiré.')
+  }
 
   async function handleSelectPlan(planId: string) {
     if (planId === 'free') {
@@ -35,7 +82,10 @@ export default function PricingPage() {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({
+          planId,
+          promoCode: appliedPromo || undefined,
+        }),
       })
 
       const data = await res.json()
@@ -60,6 +110,19 @@ export default function PricingPage() {
     }
   }
 
+  // Tarifs calculés dynamiquement selon le code promo
+  const baseMonthlyPrice = 6.99
+  const baseAnnualMonthlyPrice = 4.99
+  const baseAnnualTotal = 59.88
+
+  const discountedMonthlyPrice = getDiscountedPrice(baseMonthlyPrice, PROMO_DISCOUNT_PERCENT)
+  const discountedAnnualMonthlyPrice = getDiscountedPrice(baseAnnualMonthlyPrice, PROMO_DISCOUNT_PERCENT)
+  const discountedAnnualTotal = getDiscountedPrice(baseAnnualTotal, PROMO_DISCOUNT_PERCENT)
+
+  const currentMonthlyDisplay = isPromoApplied ? formatPrice(discountedMonthlyPrice) : '6,99 €'
+  const currentAnnualDisplay = isPromoApplied ? formatPrice(discountedAnnualMonthlyPrice) : '4,99 €'
+  const currentAnnualTotalDisplay = isPromoApplied ? formatPrice(discountedAnnualTotal) : '59,88 €'
+
   const faqs = [
     {
       q: 'Que comprend exactement la Version Gratuite Découverte ?',
@@ -67,11 +130,15 @@ export default function PricingPage() {
     },
     {
       q: 'Puis-je résilier l’abonnement Mensuel à tout moment ?',
-      a: 'Oui, absolument ! L’abonnement mensuel à 7,99 € est sans aucun engagement. Tu peux annuler en un seul clic depuis tes paramètres sans aucun frais.',
+      a: 'Oui, absolument ! L’abonnement mensuel à 6,99 € est sans aucun engagement. Tu peux annuler en un seul clic depuis tes paramètres sans aucun frais.',
     },
     {
       q: 'Comment fonctionne le paiement de l’Abonnement Annuel ?',
-      a: 'L’abonnement annuel est facturé 71 € en paiement unique pour l’année complète (soit 5,99 €/mois). Tu bénéficies immédiatement de 2 mois offerts (~25% de réduction).',
+      a: `L’abonnement annuel est facturé ${currentAnnualTotalDisplay} en paiement unique pour l’année complète (soit ${currentAnnualDisplay}/mois). Tu bénéficies immédiatement de 2 mois offerts (~29% de réduction par rapport au paiement mensuel).`,
+    },
+    {
+      q: 'Comment fonctionne le code promo d’affiliation (-15%) ?',
+      a: 'Si tu disposes d’un code promo partenaire ou influenceur (ex: INFLUENCEUR15, BAC2026), entre-le dans l’encart dédié ci-dessus. La réduction de 15% sera immédiatement calculée et transmise à la page de paiement sécurisée Stripe.',
     },
     {
       q: 'Quels sont les moyens de paiement acceptés ?',
@@ -79,12 +146,11 @@ export default function PricingPage() {
     },
     {
       q: 'Mes parents peuvent-ils régler l’abonnement ?',
-      a: 'Bien sûr ! Les coordonnées et la carte de tes parents peuvent être renseignées pour recevoir directement la facture officielle.',
+      a: 'Bien sûr ! Les coordonnées et la carte de tes parents peuvent être renseignées pour recevoir directement la facture officielle déductible.',
     },
   ]
 
   const freePlan = PRICING_PLANS.find((p) => p.id === 'free')!
-  const proPlan = PRICING_PLANS.find((p) => p.id === billingCycle)!
 
   return (
     <div className="min-h-screen bg-surface selection:bg-primary-100 selection:text-primary-900 pb-8 sm:pb-16">
@@ -131,7 +197,7 @@ export default function PricingPage() {
           </h1>
 
           <p className="mt-1 sm:mt-2 text-[10px] sm:text-base text-text-secondary max-w-xl mx-auto leading-tight">
-            Commence gratuitement ou débloque tous les outils IA en illimité.
+            Commence gratuitement ou débloque tous les outils IA en illimité dès {currentAnnualDisplay} / mois.
           </p>
 
           {/* Toggle Cycle Facturation (Mensuel / Annuel) */}
@@ -147,7 +213,7 @@ export default function PricingPage() {
             >
               <span>Annuel</span>
               <span className="ml-1 text-[8px] sm:text-[9.5px] font-black bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded-full">
-                -25%
+                -29%
               </span>
             </button>
             <button
@@ -164,9 +230,51 @@ export default function PricingPage() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════
+              ENCART CODE PROMO / AFFILIATION (-15%)
+              ═══════════════════════════════════════════════════════ */}
+          <div className="mt-3 sm:mt-5 max-w-sm mx-auto">
+            {isPromoApplied ? (
+              <div className="flex items-center justify-between gap-2 p-2 sm:p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold animate-in fade-in zoom-in-95 duration-200 shadow-xs">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                    <Check className="h-3 w-3" />
+                  </div>
+                  <span>Code <strong>{appliedPromo}</strong> appliqué (-15%)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemovePromo}
+                  className="text-[10px] font-semibold text-emerald-700 hover:text-red-600 underline cursor-pointer"
+                >
+                  Supprimer
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleApplyPromo} className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    placeholder="Code promo ou influenceur (ex: BAC2026)"
+                    className="w-full pl-8 pr-2.5 py-1.5 text-[11px] sm:text-xs bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-primary-500 uppercase font-semibold"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
+                >
+                  Appliquer
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════
               GRILLE DES TARIFS CÔTE À CÔTE SUR MOBILE & PC
               ═══════════════════════════════════════════════════════ */}
-          <div className="mt-3.5 sm:mt-10 grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 items-stretch text-left max-w-5xl mx-auto">
+          <div className="mt-3.5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 items-stretch text-left max-w-5xl mx-auto">
             {/* CARTE 1 : DÉCOUVERTE GRATUITE */}
             <div className="rounded-xl sm:rounded-3xl p-2.5 sm:p-7 flex flex-col justify-between transition-all bg-surface border border-border shadow-2xs hover:shadow-xs relative">
               <div>
@@ -251,8 +359,12 @@ export default function PricingPage() {
             <div className="rounded-xl sm:rounded-3xl p-2.5 sm:p-7 flex flex-col justify-between transition-all bg-surface border-2 border-primary-600 shadow-md ring-2 sm:ring-4 ring-primary-500/10 relative">
               {/* Badge Recommandé */}
               <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                <span className="bg-gradient-to-r from-primary-600 to-accent-600 text-white text-[7.5px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-3 py-0.5 rounded-full shadow-xs">
-                  {billingCycle === 'annual' ? '2 mois offerts' : 'Accès Total'}
+                <span className="bg-gradient-to-r from-primary-600 to-accent-600 text-white text-[7.5px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-3 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                  {isPromoApplied
+                    ? 'Code Promo -15% Appliqué 🔥'
+                    : billingCycle === 'annual'
+                    ? '2 mois offerts'
+                    : 'Accès Total'}
                 </span>
               </div>
 
@@ -268,9 +380,14 @@ export default function PricingPage() {
 
                 {/* Price Block */}
                 <div className="mt-2 pb-2 sm:mt-4 sm:pb-4 border-b border-border">
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    {isPromoApplied && (
+                      <span className="text-sm sm:text-xl text-text-tertiary line-through font-bold">
+                        {billingCycle === 'annual' ? '4,99 €' : '6,99 €'}
+                      </span>
+                    )}
                     <span className="text-xl sm:text-4xl font-black text-text-primary tracking-tight">
-                      {billingCycle === 'annual' ? '5,99 €' : '7,99 €'}
+                      {billingCycle === 'annual' ? currentAnnualDisplay : currentMonthlyDisplay}
                     </span>
                     <span className="text-[8px] sm:text-xs text-text-tertiary font-semibold">
                       / mois
@@ -278,7 +395,7 @@ export default function PricingPage() {
                   </div>
                   {billingCycle === 'annual' ? (
                     <p className="text-[7.5px] sm:text-xs text-emerald-600 font-bold mt-0.5">
-                      71 € / an (économie ~25%)
+                      {currentAnnualTotalDisplay} / an {isPromoApplied ? '(-15% appliqué)' : '(économie ~29%)'}
                     </p>
                   ) : (
                     <p className="text-[7.5px] sm:text-xs text-text-tertiary mt-0.5">
@@ -325,7 +442,7 @@ export default function PricingPage() {
                     <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Choisir Pro</span>
+                      <span>Choisir Pro ({billingCycle === 'annual' ? currentAnnualDisplay : currentMonthlyDisplay})</span>
                       <ArrowRight className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                     </>
                   )}
@@ -344,9 +461,14 @@ export default function PricingPage() {
                 </p>
 
                 <div className="mt-4 pb-4 border-b border-border">
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-2">
+                    {isPromoApplied && (
+                      <span className="text-xl text-text-tertiary line-through font-bold">
+                        6,99 €
+                      </span>
+                    )}
                     <span className="text-4xl font-black text-text-primary tracking-tight">
-                      7,99 €
+                      {currentMonthlyDisplay}
                     </span>
                     <span className="text-xs text-text-tertiary font-semibold">
                       / mois
@@ -385,7 +507,7 @@ export default function PricingPage() {
                   disabled={loadingPlan !== null}
                   className="w-full inline-flex items-center justify-center gap-1 h-10 text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-xl transition-all cursor-pointer"
                 >
-                  <span>Choisir le Mensuel</span>
+                  <span>Choisir le Mensuel ({currentMonthlyDisplay})</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -462,5 +584,19 @@ export default function PricingPage() {
         </div>
       </section>
     </div>
+  )
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+          <div className="h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <PricingContent />
+    </Suspense>
   )
 }

@@ -404,7 +404,7 @@ export function AmbitionMapWidget({
             </p>
             <Link href="/pricing" className="block pt-0.5">
               <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-black px-3.5 py-1 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-sm hover:opacity-95 transition-opacity">
-                <span>Passer Pro (dès 5,99 €)</span>
+                <span>Passer Pro (dès 4,99 €)</span>
                 <ChevronRight className="h-3 w-3" />
               </span>
             </Link>

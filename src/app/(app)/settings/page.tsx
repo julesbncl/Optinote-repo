@@ -925,7 +925,7 @@ export default function SettingsPage() {
                     className="w-full inline-flex items-center justify-center gap-1 px-2 py-1 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-[10px] sm:text-[11px] font-bold shadow-2xs transition-all cursor-pointer h-7"
                   >
                     <Zap className="h-3 w-3" />
-                    <span>Passer Pro (dès 5,99 €) ➔</span>
+                    <span>Passer Pro (dès 4,99 €) ➔</span>
                   </button>
                 </Link>
               )}

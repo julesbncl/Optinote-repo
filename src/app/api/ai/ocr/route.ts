@@ -5,6 +5,8 @@ import { PROMPTS } from '@/lib/ai/prompts'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 
+import { ocrRequestSchema } from '@/lib/validators/ai'
+
 export const maxDuration = 60 // 60 seconds timeout for Vercel/Next.js
 
 export async function POST(request: Request) {
@@ -31,16 +33,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Validate Payload
+    // 3. Validate Payload with Zod
     const body = await request.json()
-    const { imageUrl } = body
-
-    if (!imageUrl || typeof imageUrl !== 'string') {
+    const parsed = ocrRequestSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Image requise pour l\'analyse OCR.' },
+        { error: parsed.error.issues[0]?.message || 'Image requise pour l’analyse OCR' },
         { status: 400 }
       )
     }
+
+    const { imageUrl } = parsed.data
 
     // 4. Call OpenAI Vision if configured
     if (process.env.OPENAI_API_KEY) {

@@ -46,7 +46,23 @@ export const createGradeSchema = z.object({
 
 export const updateGradeSchema = createGradeSchema.partial()
 
+export const simulatedGradeItemSchema = z.object({
+  subjectId: z.string().min(1, 'Identifiant de matière requis'),
+  value: z.number().min(0, 'Note minimale 0').max(20, 'Note maximale 20'),
+  outOf: z.number().min(1).max(100).default(20),
+  coefficient: z.number().min(0.25).max(20).default(1),
+  label: z.string().max(200).optional(),
+})
+
+export const simulateAverageSchema = z.object({
+  trimester: z.number().int().min(1).max(3),
+  targetAverage: z.number().min(0).max(20).optional(),
+  simulatedGrades: z.array(simulatedGradeItemSchema).max(50, 'Nombre maximum de notes simulées atteint'),
+})
+
 export type CreateSubjectInput = z.infer<typeof createSubjectSchema>
 export type UpdateSubjectInput = z.infer<typeof updateSubjectSchema>
 export type CreateGradeInput = z.infer<typeof createGradeSchema>
 export type UpdateGradeInput = z.infer<typeof updateGradeSchema>
+export type SimulateAverageInput = z.infer<typeof simulateAverageSchema>
+export type SimulatedGradeItemInput = z.infer<typeof simulatedGradeItemSchema>

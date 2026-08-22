@@ -38,12 +38,12 @@ export interface PricingPlan {
   name: string
   badge?: string
   description: string
-  price: number // e.g. 0, 7.99, 71.88
-  displayPrice: string // e.g. "0 €", "7,99 €", "5,99 €"
+  price: number // e.g. 0, 6.99, 59.88
+  displayPrice: string // e.g. "0 €", "6,99 €", "4,99 €"
   billingPeriod: string // e.g. "gratuit", "par mois", "par mois"
-  annualBillingTotal?: string // e.g. "71 € facturés pour un an"
-  equivalentMonthlyPrice?: string // e.g. "5,99 € / mois"
-  savingsBadge?: string // e.g. "Économise 24 €"
+  annualBillingTotal?: string // e.g. "59,88 € facturés pour un an"
+  equivalentMonthlyPrice?: string // e.g. "4,99 € / mois"
+  savingsBadge?: string // e.g. "Économise ~29%"
   stripePriceId?: string
   features: string[]
   limitations?: string[]

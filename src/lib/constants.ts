@@ -150,6 +150,32 @@ export const RATE_LIMITS = {
 } as const
 
 // Subscription Pricing Plans (Free, Monthly, Annual)
+export const PROMO_DISCOUNT_PERCENT = 15
+export const VALID_PROMO_CODES = [
+  'INFLUENCEUR15',
+  'BAC2026',
+  'OPTINOTE15',
+  'PASS15',
+  'TIKTOK15',
+  'MENTION15',
+  'REVISION15',
+  'PROMO15',
+] as const
+
+/**
+ * Calcule le prix remisé avec le pourcentage de réduction d'affiliation
+ */
+export function getDiscountedPrice(price: number, discountPercent: number = PROMO_DISCOUNT_PERCENT): number {
+  return Math.round(price * (1 - discountPercent / 100) * 100) / 100
+}
+
+/**
+ * Formate un nombre en devise euro française (ex: 6.99 -> "6,99 €")
+ */
+export function formatPrice(price: number): string {
+  return price.toFixed(2).replace('.', ',') + ' €'
+}
+
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
@@ -177,8 +203,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'monthly',
     name: 'Abonnement Mensuel',
     description: 'Accès 100% complet et illimité à tous les outils, sans aucun engagement.',
-    price: 7.99,
-    displayPrice: '7,99 €',
+    price: 6.99,
+    displayPrice: '6,99 €',
     billingPeriod: 'par mois',
     stripePriceId: process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGrWM4B48KwBLvdM5LSU',
     badge: undefined,
@@ -197,20 +223,20 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'annual',
     name: 'Abonnement Annuel',
     description: 'La formule recommandée pour toute l’année scolaire avec le tarif le plus avantageux.',
-    price: 71.00,
-    displayPrice: '5,99 €',
+    price: 59.88,
+    displayPrice: '4,99 €',
     billingPeriod: 'par mois',
-    annualBillingTotal: 'Soit 71 € facturés pour 1 an (2 mois offerts)',
-    equivalentMonthlyPrice: '5,99 € / mois',
-    savingsBadge: 'Économise 25% (2 mois offerts)',
-    stripePriceId: process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || process.env.STRIPE_PRICE_ID || 'price_1U6SrGrWM4B48KwBLvdM5LSU',
+    annualBillingTotal: 'Soit 59,88 € facturés pour 1 an (2 mois offerts)',
+    equivalentMonthlyPrice: '4,99 € / mois',
+    savingsBadge: 'Économise ~29% (2 mois offerts)',
+    stripePriceId: process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1U7H5KRwM4B48KWbDoLCFGzq',
     badge: 'MEILLEURE OFFRE 🔥',
     highlighted: true,
-    ctaLabel: 'Profiter de l’offre Annuelle (71 €)',
+    ctaLabel: 'Profiter de l’offre Annuelle (59,88 €)',
     features: [
       'Accès 100% ILLIMITÉ à toutes les fonctionnalités d’OptiNote',
-      'Tarif réduit à 5,99 € / mois (au lieu de 7,99 € / mois)',
-      'Total de 71 € facturés en une seule fois pour 12 mois',
+      'Tarif réduit à 4,99 € / mois (au lieu de 6,99 € / mois)',
+      'Total de 59,88 € facturés en une seule fois pour 12 mois',
       '2 mois complets offerts par rapport au paiement mensuel',
       'Planning IA, Salons de spécialités & Carte débloqués',
       'Support prioritaire 7j/7 pour les examens et le Bac',

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
-import { PRICING_PLANS } from '@/lib/constants'
+import {
+  PRICING_PLANS,
+  VALID_PROMO_CODES,
+  PROMO_DISCOUNT_PERCENT,
+  getDiscountedPrice,
+} from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,10 +58,21 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
     }
 
-    const envPriceId = process.env.STRIPE_PRICE_ID
-    const priceId = body.priceId || selectedPlan.stripePriceId || envPriceId
+    const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim().toUpperCase() : undefined
+    const isPromoValid = Boolean(promoCode && (VALID_PROMO_CODES as readonly string[]).includes(promoCode))
+
+    const finalPrice = isPromoValid
+      ? getDiscountedPrice(selectedPlan.price, PROMO_DISCOUNT_PERCENT)
+      : selectedPlan.price
+
     const isAnnual = selectedPlan.id === 'annual'
     const interval = isAnnual ? 'year' : 'month'
+
+    const envPriceId = isAnnual
+      ? (process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1U7H5KRwM4B48KWbDoLCFGzq')
+      : (process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGrWM4B48KwBLvdM5LSU')
+
+    const priceId = !isPromoValid ? (body.priceId || selectedPlan.stripePriceId || envPriceId) : undefined
 
     const forwardedHost = request.headers.get('x-forwarded-host')
     const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
@@ -68,10 +84,10 @@ export async function POST(request: NextRequest) {
       price_data: {
         currency: 'eur',
         product_data: {
-          name: `OptiNote ${selectedPlan.name}`,
+          name: `OptiNote ${selectedPlan.name}${isPromoValid ? ` (-${PROMO_DISCOUNT_PERCENT}% Promo ${promoCode})` : ''}`,
           description: selectedPlan.description || 'Abonnement OptiNote Pro',
         },
-        unit_amount: Math.round(selectedPlan.price * 100),
+        unit_amount: Math.round(finalPrice * 100),
         recurring: {
           interval: interval as 'year' | 'month',
         },
@@ -89,12 +105,15 @@ export async function POST(request: NextRequest) {
         supabase_user_id: user.id,
         plan_tier: selectedPlan.id,
         billing_interval: interval,
+        promo_code: promoCode || 'none',
+        discount_percent: isPromoValid ? '15%' : '0%',
       },
       subscription_data: {
         metadata: {
           supabase_user_id: user.id,
           plan_tier: selectedPlan.id,
           billing_interval: interval,
+          promo_code: promoCode || 'none',
         },
       },
       allow_promotion_codes: true,

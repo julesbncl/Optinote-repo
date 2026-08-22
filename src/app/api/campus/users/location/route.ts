@@ -115,6 +115,8 @@ export async function GET() {
   }
 }
 
+import { updateUserLocationSchema } from '@/lib/validators/campus'
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -127,7 +129,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { latitude, longitude, is_visible, bio } = body
+    const parsed = updateUserLocationSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Coordonnées de position invalides' },
+        { status: 400 }
+      )
+    }
+
+    const { latitude, longitude, is_visible, bio } = parsed.data
 
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -136,7 +146,7 @@ export async function POST(request: NextRequest) {
     if (latitude !== undefined) updatePayload.latitude = latitude
     if (longitude !== undefined) updatePayload.longitude = longitude
     if (is_visible !== undefined) updatePayload.is_visible = is_visible
-    if (bio !== undefined) updatePayload.bio = bio
+    if (bio !== undefined) updatePayload.bio = bio.trim()
 
     const { data, error } = await supabase
       .from('profiles')

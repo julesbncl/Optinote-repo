@@ -535,7 +535,7 @@ export default function CampusMapPage() {
               <Link href="/pricing" className="block w-full">
                 <Button size="lg" className="w-full gap-2 shadow-lg shadow-primary-600/25 font-black text-sm">
                   <Sparkles className="h-4 w-4" />
-                  <span>Passer à l&apos;accès Pro (5,99 € / mois)</span>
+                  <span>Passer à l&apos;accès Pro (4,99 € / mois)</span>
                 </Button>
               </Link>
               <Link href="/campus" className="block w-full">

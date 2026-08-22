@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendEmail, sendWelcomeEmail, sendTestEmail } from '@/lib/email'
+import { sendEmail, sendWelcomeEmail, sendTestEmail, sendVerificationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { to, type = 'test', name, subject, message } = body
+    const { to, type = 'test', name, subject, message, verificationUrl } = body
 
     if (!to) {
       return NextResponse.json(
@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
 
     let result
 
-    if (type === 'welcome') {
+    if (type === 'verify') {
+      result = await sendVerificationEmail(to, {
+        name,
+        verificationUrl: verificationUrl || `https://optinote.fr/auth/confirm?token=demo-secure-token-${Date.now()}`,
+      })
+    } else if (type === 'welcome') {
       result = await sendWelcomeEmail(to, name)
     } else if (type === 'custom') {
       if (!subject || !message) {
@@ -35,13 +40,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 })
+      return NextResponse.json({ error: result.error, latencyMs: result.latencyMs }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      message: `Email envoyé avec succès à ${to} via Resend ! 🚀`,
-      data: result.data,
+      message: `Email envoyé avec succès à ${to} via Resend depuis OptiNote <contact@optinote.fr> ! 🚀`,
+      messageId: result.messageId,
+      latencyMs: result.latencyMs,
     })
   } catch (error: any) {
     console.error('Erreur API Email:', error)

@@ -769,7 +769,7 @@ export default function DashboardPage() {
               </p>
               <Link href="/pricing" className="block pt-0.5">
                 <span className="inline-flex items-center gap-1 text-[10.5px] font-black px-4 py-1.5 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer">
-                  <span>Passer Pro (dès 5,99 €)</span>
+                  <span>Passer Pro (dès 4,99 €)</span>
                   <ChevronRight className="h-3 w-3" />
                 </span>
               </Link>

@@ -80,13 +80,13 @@ export function PaywallGuard({
             <Link href="/pricing" className="block w-full">
               <Button size="lg" className="w-full gap-2 shadow-md hover:shadow-lg font-bold">
                 <Sparkles className="h-4 w-4" />
-                Découvrir les offres dès 5,99 € / mois
+                Découvrir les offres dès 4,99 € / mois
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
 
             <p className="text-[11px] text-text-tertiary">
-              Paiement 100% sécurisé via Stripe • Annuel 71,88 € (-24 € d’économie)
+              Paiement 100% sécurisé via Stripe • Annuel 59,88 € (-24 € d’économie)
             </p>
           </div>
         </Card>

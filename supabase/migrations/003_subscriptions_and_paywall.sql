@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
   price_id TEXT NOT NULL,
   plan_tier TEXT NOT NULL CHECK (plan_tier IN ('monthly', 'annual')),
   billing_interval TEXT NOT NULL CHECK (billing_interval IN ('month', 'year')),
-  amount INTEGER NOT NULL, -- in cents (799 for 7.99 EUR or 7188 for 71.88 EUR)
+  amount INTEGER NOT NULL, -- in cents (699 for 6.99 EUR or 5988 for 59.88 EUR)
   currency TEXT DEFAULT 'eur',
   current_period_start TIMESTAMPTZ NOT NULL,
   current_period_end TIMESTAMPTZ NOT NULL,

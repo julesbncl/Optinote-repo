@@ -7,6 +7,8 @@ import { RATE_LIMITS } from '@/lib/constants'
 import { checkRevisionSheetQuota } from '@/lib/utils/quotas'
 import { safeParseAIJson } from '@/lib/ai/json-parser'
 
+import { scannerRequestSchema } from '@/lib/validators/ai'
+
 export const maxDuration = 60 // 60s timeout for vision processing
 
 export async function POST(request: Request) {
@@ -52,16 +54,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Parse and Validate Request Payload
+    // 3. Parse and Validate Request Payload with Zod
     const body = await request.json()
-    const { imageUrl, subjectHint, titleHint } = body
-
-    if (!imageUrl || typeof imageUrl !== 'string') {
+    const parsed = scannerRequestSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Photo requise pour le scan du cours.' },
+        { error: parsed.error.issues[0]?.message || 'Image de cours requise' },
         { status: 400 }
       )
     }
+
+    const { imageUrl, subjectHint } = parsed.data
+    const titleHint = body.titleHint ? String(body.titleHint).slice(0, 100) : undefined
 
     // 4. Execute GPT-4o Vision call if OPENAI_API_KEY is configured
     if (process.env.OPENAI_API_KEY) {

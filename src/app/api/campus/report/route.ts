@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { reportMessageSchema } from '@/lib/validators/campus'
 
 export async function POST(request: Request) {
   try {
@@ -13,18 +14,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { messageId, reason, details } = body
-
-    if (!messageId || !reason) {
-      return NextResponse.json({ error: 'Données de signalement incomplètes' }, { status: 400 })
+    const parsed = reportMessageSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Données de signalement invalides' },
+        { status: 400 }
+      )
     }
 
-    // Insert report
+    const { messageId, reason, details } = parsed.data
+
+    // Insert report (requête paramétrée sécurisée)
     const { error } = await supabase.from('message_reports').insert({
       message_id: messageId,
       reported_by: user.id,
       reason,
-      details: details?.trim() || null,
+      details: details ? details.trim() : null,
       status: 'pending',
     })
 
