@@ -76,9 +76,12 @@ export async function POST(request: NextRequest) {
 
     const forwardedHost = request.headers.get('x-forwarded-host')
     const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
-    const origin = forwardedHost
-      ? `${forwardedProto}://${forwardedHost}`
-      : process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
+    const origin = (
+      forwardedHost
+        ? `${forwardedProto}://${forwardedHost}`
+        : process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
+    ).replace(/\/+$/, '')
+
 
     const dynamicPriceData = {
       price_data: {

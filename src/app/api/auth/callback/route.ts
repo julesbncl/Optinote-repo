@@ -13,9 +13,12 @@ export async function GET(request: Request) {
   // Déterminer l'URL d'origine de manière fiable (support local et déploiement Vercel)
   const forwardedHost = request.headers.get('x-forwarded-host')
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
-  const origin = forwardedHost
-    ? `${forwardedProto}://${forwardedHost}`
-    : process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
+  const origin = (
+    forwardedHost
+      ? `${forwardedProto}://${forwardedHost}`
+      : process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
+  ).replace(/\/+$/, '')
+
 
   const supabase = await createClient()
 
