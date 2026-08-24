@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Select } from '@/components/ui/Select'
+import { Combobox } from '@/components/ui/Combobox'
 import { Modal, ConfirmDeleteModal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { calculateWeightedAverage } from '@/lib/utils'
@@ -26,7 +27,7 @@ import type { Subject, Grade, Profile } from '@/types/database'
 import { PaywallModal } from '@/components/paywall/PaywallModal'
 import { CurriculumSetupModal } from '@/components/grades/CurriculumSetupModal'
 import { EditableCoefficientBadge } from '@/components/grades/EditableCoefficientBadge'
-import type { OfficialSubjectTemplate } from '@/lib/curriculum'
+import { SUBJECT_SUGGESTIONS, type OfficialSubjectTemplate } from '@/lib/curriculum'
 import Link from 'next/link'
 
 const DEFAULT_SUBJECTS: Subject[] = [
@@ -717,10 +718,16 @@ export default function GradesPage() {
         title="Ajouter une matière"
       >
         <form onSubmit={handleAddSubject} className="space-y-4">
-          <Input
+          <Combobox
             name="name"
             label="Nom de la matière"
             placeholder="ex: Mathématiques, Philosophie..."
+            options={SUBJECT_SUGGESTIONS.map((s) => ({
+              value: s.name,
+              label: s.name,
+              icon: s.emoji,
+              group: s.group,
+            }))}
             required
           />
           <Input

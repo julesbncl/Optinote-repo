@@ -56,6 +56,44 @@ export const OPTIONAL_COURSES = {
   ],
 }
 
+export interface SubjectSuggestion {
+  name: string
+  emoji: string
+  group: 'Tronc commun' | 'Spécialités' | 'Options'
+}
+
+/**
+ * Liste plate des matières officielles (tronc commun, spécialités, options) proposées
+ * en suggestions dans le champ "Nom de la matière" du simulateur de notes.
+ */
+export const SUBJECT_SUGGESTIONS: SubjectSuggestion[] = [
+  // Tronc commun
+  { name: 'Français', emoji: '📖', group: 'Tronc commun' },
+  { name: 'Philosophie', emoji: '🧠', group: 'Tronc commun' },
+  { name: 'Histoire-Géographie', emoji: '🏛️', group: 'Tronc commun' },
+  { name: 'Enseignement Scientifique', emoji: '🔬', group: 'Tronc commun' },
+  { name: 'Langue Vivante A', emoji: '🌍', group: 'Tronc commun' },
+  { name: 'Langue Vivante B', emoji: '🌐', group: 'Tronc commun' },
+  { name: 'EPS', emoji: '🏃', group: 'Tronc commun' },
+  { name: 'EMC', emoji: '⚖️', group: 'Tronc commun' },
+  { name: 'SNT', emoji: '💾', group: 'Tronc commun' },
+
+  // Spécialités (référentiel officiel partagé avec la configuration de grille)
+  ...OFFICIAL_SPECIALTIES.map((s) => ({
+    name: s.name,
+    emoji: s.emoji,
+    group: 'Spécialités' as const,
+  })),
+
+  // Options facultatives courantes
+  { name: 'Mathématiques Expertes', emoji: '📐', group: 'Options' },
+  { name: 'Mathématiques Complémentaires', emoji: '📊', group: 'Options' },
+  { name: 'Droit & Grands Enjeux (DGEMC)', emoji: '⚖️', group: 'Options' },
+  { name: 'Latin', emoji: '🏺', group: 'Options' },
+  { name: 'Grec Ancien', emoji: '🏺', group: 'Options' },
+  { name: 'Langue Vivante C (LV3)', emoji: '🗣️', group: 'Options' },
+]
+
 /**
  * Génère la liste complète des matières et coefficients officiels selon le niveau et les spécialités sélectionnées
  */
