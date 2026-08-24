@@ -37,7 +37,7 @@ import type { School } from '@/types/campus'
 interface DashboardData {
   subjects: Subject[]
   grades: Grade[]
-  recentSheets: RevisionSheet[]
+  recentSheets: Pick<RevisionSheet, 'id'>[]
   schedule: Schedule | null
 }
 
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                 .order('date', { ascending: false }),
               supabase
                 .from('revision_sheets')
-                .select('*')
+                .select('id')
                 .eq('user_id', user.id)
                 .order('updated_at', { ascending: false })
                 .limit(4),
