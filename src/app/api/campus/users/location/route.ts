@@ -30,11 +30,14 @@ export async function GET() {
         const lat = rawLat !== null && !isNaN(Number(rawLat)) ? Number(rawLat) : null
         const lng = rawLng !== null && !isNaN(Number(rawLng)) ? Number(rawLng) : null
 
+        const safeAvatarUrl =
+          typeof u.avatar_url === 'string' && u.avatar_url.length <= 4000 ? u.avatar_url : null
+
         return {
           id: u.id,
           full_name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
           email: u.email,
-          avatar_url: u.avatar_url,
+          avatar_url: safeAvatarUrl,
           school_name: u.school_name || 'Lycée',
           class_level: u.class_level || 'terminale',
           specialties: Array.isArray(u.specialties) ? u.specialties : [],

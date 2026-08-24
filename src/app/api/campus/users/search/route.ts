@@ -37,11 +37,13 @@ export async function GET(request: NextRequest) {
       })
       .map((p: any) => {
         const prefs = (typeof p.preferences === 'object' && p.preferences !== null) ? p.preferences : {}
+        const safeAvatarUrl =
+          typeof p.avatar_url === 'string' && p.avatar_url.length <= 4000 ? p.avatar_url : null
         return {
           id: p.id,
           full_name: p.full_name || p.email?.split('@')[0] || 'Lycéen',
           email: p.email,
-          avatar_url: p.avatar_url,
+          avatar_url: safeAvatarUrl,
           class_level: p.class_level || 'terminale',
           specialties: Array.isArray(p.specialties) ? p.specialties : [],
           academic_goal: p.academic_goal,
