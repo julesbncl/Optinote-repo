@@ -42,10 +42,35 @@ export async function GET() {
       friendsProfiles = profiles || []
     }
 
+    // Enrichir les demandes reçues/envoyées avec le profil de l'autre personne
+    const otherPartyIds = Array.from(
+      new Set([
+        ...pendingReceived.map((f) => f.user_id),
+        ...pendingSent.map((f) => f.friend_id),
+      ])
+    )
+    let otherPartyProfiles: Record<string, any> = {}
+    if (otherPartyIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, school_name, class_level, specialties')
+        .in('id', otherPartyIds)
+      otherPartyProfiles = Object.fromEntries((profiles || []).map((p) => [p.id, p]))
+    }
+
+    const pendingReceivedWithProfiles = pendingReceived.map((f) => ({
+      ...f,
+      friend_profile: otherPartyProfiles[f.user_id] || null,
+    }))
+    const pendingSentWithProfiles = pendingSent.map((f) => ({
+      ...f,
+      friend_profile: otherPartyProfiles[f.friend_id] || null,
+    }))
+
     return NextResponse.json({
       friends: friendsProfiles,
-      pendingReceived,
-      pendingSent,
+      pendingReceived: pendingReceivedWithProfiles,
+      pendingSent: pendingSentWithProfiles,
     })
   } catch (error) {
     console.error('Error fetching friendships:', error)
