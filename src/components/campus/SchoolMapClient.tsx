@@ -75,18 +75,20 @@ function createSchoolIcon(isSelected: boolean = false, isUserSchool: boolean = f
 }
 
 // 2. Icône pour les camarades / lycéens membres normaux (36px)
-function createStudentIcon(name: string, avatarUrl?: string | null, isVerified: boolean = false) {
-  const initials = name
-    ? name
-        .split(' ')
+function createStudentIcon(name?: string | null, avatarUrl?: string | null, isVerified: boolean = false) {
+  const safeName = name && typeof name === 'string' ? name.trim() : ''
+  const initials = safeName
+    ? safeName
+        .split(/\s+/)
+        .filter(Boolean)
         .map((n) => n[0])
         .slice(0, 2)
         .join('')
-        .toUpperCase()
+        .toUpperCase() || '👤'
     : '👤'
 
   const contentHtml = avatarUrl
-    ? `<img src="${avatarUrl}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div style="display: none; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #ec4899); align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 900;">${initials}</div>`
+    ? `<img src="${avatarUrl}" alt="${safeName || 'Lycéen'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div style="display: none; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #ec4899); align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 900;">${initials}</div>`
     : `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #ec4899); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 900;">${initials}</div>`
 
   const verifiedBadge = isVerified
@@ -111,13 +113,15 @@ function createStudentIcon(name: string, avatarUrl?: string | null, isVerified: 
 
 // 3. Icône SPÉCIALE UTILISATEUR CONNECTÉ (Significativement plus grande, 56px, avec photo de profil et halo radar vibrant)
 function createCurrentUserAvatarIcon(avatarUrl?: string | null, name?: string | null, isVerified: boolean = false) {
-  const initials = name
-    ? name
-        .split(' ')
+  const safeName = name && typeof name === 'string' ? name.trim() : ''
+  const initials = safeName
+    ? safeName
+        .split(/\s+/)
+        .filter(Boolean)
         .map((n) => n[0])
         .slice(0, 2)
         .join('')
-        .toUpperCase()
+        .toUpperCase() || 'MOI'
     : 'MOI'
 
   const contentHtml = avatarUrl
@@ -491,14 +495,20 @@ export default function SchoolMapClient({
   }
 
   // Déterminer la position active de l'utilisateur connecté avec fallback garanti (Sud de la France / Lycée)
+  const safeUserLoc =
+    userLocation && !isNaN(Number(userLocation.latitude)) && !isNaN(Number(userLocation.longitude))
+      ? { latitude: Number(userLocation.latitude), longitude: Number(userLocation.longitude) }
+      : null
+
   const effectiveUserLocation =
-    userLocation ||
-    (currentUserId && users.find((u) => u.id === currentUserId)?.latitude && users.find((u) => u.id === currentUserId)?.longitude
-      ? {
-          latitude: Number(users.find((u) => u.id === currentUserId)!.latitude),
-          longitude: Number(users.find((u) => u.id === currentUserId)!.longitude),
-        }
-      : { latitude: 43.610769, longitude: 3.876716 })
+    safeUserLoc ||
+    (() => {
+      const match = currentUserId ? users.find((u) => u.id === currentUserId) : null
+      if (match?.latitude && match?.longitude && !isNaN(Number(match.latitude)) && !isNaN(Number(match.longitude))) {
+        return { latitude: Number(match.latitude), longitude: Number(match.longitude) }
+      }
+      return { latitude: 43.610769, longitude: 3.876716 }
+    })()
 
   return (
     <div className={`relative ${containerHeight} w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-border shadow-lg ${className || ''}`}>
@@ -554,7 +564,7 @@ export default function SchoolMapClient({
                 userSchoolName.toLowerCase().trim() === school.name.toLowerCase().trim())
           )
 
-          if (!school.latitude || !school.longitude) return null
+          if (!school.latitude || !school.longitude || isNaN(Number(school.latitude)) || isNaN(Number(school.longitude))) return null
 
           return (
             <SchoolMarkerItem
@@ -571,7 +581,10 @@ export default function SchoolMapClient({
 
         {/* 3. Marqueurs des Lycéens visibles (Campus Social) */}
         {users.map((student) => {
-          if (!student.latitude || !student.longitude) return null
+          if (!student || student.latitude === null || student.latitude === undefined || student.longitude === null || student.longitude === undefined) return null
+          const lat = Number(student.latitude)
+          const lng = Number(student.longitude)
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null
           const isMe = student.id === currentUserId
 
           // Si c'est l'utilisateur connecté, le marqueur proéminent est déjà affiché ci-dessus
@@ -582,13 +595,9 @@ export default function SchoolMapClient({
           return (
             <Marker
               key={`student-${student.id}`}
-              position={[Number(student.latitude), Number(student.longitude)]}
-              icon={
-                isMe
-                  ? createCurrentUserAvatarIcon(student.avatar_url || currentUserAvatarUrl, student.full_name || currentUserName, isCurrentUserVerified)
-                  : createStudentIcon(student.full_name || 'Lycéen', student.avatar_url, isStudentVerified)
-              }
-              zIndexOffset={isMe ? 999 : 100}
+              position={[lat, lng]}
+              icon={createStudentIcon(student.full_name || 'Lycéen', student.avatar_url, isStudentVerified)}
+              zIndexOffset={100}
             >
               <Popup className="student-custom-popup" minWidth={250} maxWidth={300}>
                 <div className="p-2 space-y-2">

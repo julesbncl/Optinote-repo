@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -21,7 +21,7 @@ import toast from 'react-hot-toast'
 import type { Profile } from '@/types/database'
 import type { Friendship } from '@/types/campus'
 
-export default function PrivateMessagesPage() {
+function PrivateMessagesContent() {
   const searchParams = useSearchParams()
   const initialFriendId = searchParams.get('friendId') || searchParams.get('dmUserId')
   const initialFriendName = searchParams.get('friendName') || searchParams.get('dmUserName')
@@ -248,5 +248,19 @@ export default function PrivateMessagesPage() {
       </div>
     </div>
     </PaywallGuard>
+  )
+}
+
+export default function PrivateMessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-[600px] flex items-center justify-center text-xs text-text-tertiary">
+          Chargement des messages...
+        </div>
+      }
+    >
+      <PrivateMessagesContent />
+    </Suspense>
   )
 }

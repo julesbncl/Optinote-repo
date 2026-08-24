@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react'
 import Link from 'next/link'
+import CampusLoading from './loading'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ChannelList } from '@/components/campus/ChannelList'
@@ -202,7 +203,7 @@ const DEFAULT_CHANNELS: ChatChannel[] = [
   },
 ]
 
-export default function CampusHubPage() {
+function CampusHubContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const schoolIdParam = searchParams.get('schoolId')
@@ -747,7 +748,7 @@ export default function CampusHubPage() {
                   </span>
                 </div>
                 <p className="text-[9px] sm:text-[10px] text-text-tertiary truncate">
-                  {profile.school_name ? `Autour de ${profile.school_name}` : 'Lycées et élèves partout en France'}
+                  {profile?.school_name ? `Autour de ${profile.school_name}` : 'Lycées et élèves partout en France'}
                 </p>
               </div>
             </div>
@@ -932,9 +933,9 @@ export default function CampusHubPage() {
               <div className="flex items-center gap-1 font-bold text-text-primary truncate">
                 <Target className="h-3 w-3 text-primary-600 flex-shrink-0" />
                 <span className="truncate">
-                  {profile.post_bac_target === 'ingenieur'
+                  {profile?.post_bac_target === 'ingenieur'
                     ? 'CPGE MPSI / Écoles d’Ingénieurs 🚀'
-                    : profile.post_bac_target === 'sante'
+                    : profile?.post_bac_target === 'sante'
                     ? 'PASS / LAS (Médecine) 🩺'
                     : 'Excellence & Parcoursup 🎓'}
                 </span>
@@ -1593,5 +1594,13 @@ export default function CampusHubPage() {
       </Modal>
     </div>
     </PaywallGuard>
+  )
+}
+
+export default function CampusHubPage() {
+  return (
+    <Suspense fallback={<CampusLoading />}>
+      <CampusHubContent />
+    </Suspense>
   )
 }
