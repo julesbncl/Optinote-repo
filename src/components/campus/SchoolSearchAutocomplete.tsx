@@ -121,12 +121,12 @@ export function SchoolSearchAutocomplete({
         )}
       </div>
 
-      {/* Dropdown Suggestions depuis l'Éducation Nationale */}
+      {/* Dropdown Suggestions Lycées */}
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 mt-1.5 left-0 right-0 max-h-72 overflow-y-auto bg-surface rounded-2xl border border-border shadow-xl p-1.5 space-y-1 animate-in fade-in-50 zoom-in-95 duration-100 no-scrollbar">
-          <div className="px-2 py-1 text-[10px] font-black text-text-tertiary uppercase tracking-wider flex items-center justify-between border-b border-border/60">
-            <span>Annuaire Éducation Nationale</span>
-            <span className="text-primary-600 font-bold">API Officielle</span>
+          <div className="px-2.5 py-1 text-[10.5px] font-bold text-text-tertiary flex items-center justify-between border-b border-border/50">
+            <span>Lycées suggérés</span>
+            <span className="text-[10px] text-text-tertiary font-semibold">{suggestions.length} résultat{suggestions.length > 1 ? 's' : ''}</span>
           </div>
 
           {suggestions.map((school, index) => (

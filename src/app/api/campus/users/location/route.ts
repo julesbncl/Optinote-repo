@@ -1,87 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-// Seed mock peers réels pour peupler la carte interactive
-const MOCK_MAP_STUDENTS = [
-  {
-    id: 'peer-geo-1',
-    full_name: 'Léa Moreau',
-    school_name: 'Lycée Henri IV',
-    class_level: 'terminale',
-    specialties: ['Mathématiques', 'Physique-Chimie'],
-    academic_goal: 'excellence',
-    latitude: 48.8458,
-    longitude: 2.3486,
-    is_visible: true,
-    is_verified: true,
-    bio: 'Objectif MPSI à Henri IV / Louis-le-Grand 📐 Entraide en maths et physique !',
-  },
-  {
-    id: 'peer-geo-2',
-    full_name: 'Yanis Khelifi',
-    school_name: 'Lycée Louis-le-Grand',
-    class_level: 'terminale',
-    specialties: ['Mathématiques', 'NSI'],
-    academic_goal: 'excellence',
-    latitude: 48.8480,
-    longitude: 2.3444,
-    is_visible: true,
-    is_verified: true,
-    bio: 'Passionné de code & algo Python 💻 Prépa MP2I.',
-  },
-  {
-    id: 'peer-geo-3',
-    full_name: 'Inès Benali',
-    school_name: 'Lycée du Parc',
-    class_level: 'premiere',
-    specialties: ['SES', 'HGGSP'],
-    academic_goal: 'progression',
-    latitude: 45.7705,
-    longitude: 4.8569,
-    is_visible: true,
-    is_verified: true,
-    bio: 'Objectif Sciences Po Paris 🏛️ On révise la géopolitique ensemble !',
-  },
-  {
-    id: 'peer-geo-4',
-    full_name: 'Mamadou Diallo',
-    school_name: 'Lycée Thiers',
-    class_level: 'terminale',
-    specialties: ['SVT', 'Physique-Chimie'],
-    academic_goal: 'excellence',
-    latitude: 43.2989,
-    longitude: 5.3831,
-    is_visible: true,
-    is_verified: false,
-    bio: 'Futur étudiant PASS / Médecine 🩺 Motivation maximale !',
-  },
-  {
-    id: 'peer-geo-5',
-    full_name: 'Camille Leroy',
-    school_name: 'Lycée Pierre-de-Fermat',
-    class_level: 'terminale',
-    specialties: ['Mathématiques', 'SES'],
-    academic_goal: 'excellence',
-    latitude: 43.6033,
-    longitude: 1.4398,
-    is_visible: true,
-    is_verified: true,
-    bio: 'Prépa ECG ou Dauphine 📈 Toujours dispo pour un groupe de travail.',
-  },
-  {
-    id: 'peer-geo-6',
-    full_name: 'Antoine Marchand',
-    school_name: 'Lycée Clemenceau',
-    class_level: 'terminale',
-    specialties: ['Physique-Chimie', 'SVT'],
-    academic_goal: 'bac_mention',
-    latitude: 47.2197,
-    longitude: -1.5456,
-    is_visible: true,
-    is_verified: false,
-    bio: 'Objectif mention TB et écoles d’ingénieurs post-bac 🚀',
-  },
-]
+import { updateUserLocationSchema } from '@/lib/validators/campus'
 
 export async function GET() {
   try {
@@ -89,33 +8,52 @@ export async function GET() {
 
     const { data: dbUsers, error } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url, school_name, class_level, specialties, academic_goal, post_bac_target, latitude, longitude, is_visible, is_verified, verification_status, bio')
-      .eq('is_visible', true)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
+      .select('id, full_name, email, avatar_url, school_name, class_level, specialties, academic_goal, post_bac_target, is_visible_on_school, is_pro, preferences, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(100)
 
-    if (error || !dbUsers || dbUsers.length === 0) {
-      return NextResponse.json({ users: MOCK_MAP_STUDENTS })
+    if (error || !dbUsers) {
+      console.warn('Error fetching profiles for campus map:', error)
+      return NextResponse.json({ users: [] })
     }
 
-    // Fusionner les données de la base avec des mocks si peu d'utilisateurs
-    const combinedUsers = [...dbUsers]
-    if (combinedUsers.length < 4) {
-      MOCK_MAP_STUDENTS.forEach((mock) => {
-        if (!combinedUsers.some((u) => u.id === mock.id)) {
-          combinedUsers.push(mock as any)
+    const mappedUsers = dbUsers
+      .filter((u: any) => {
+        if (u.is_visible_on_school === false) return false
+        if (u.email && (u.email.includes('mock') || u.email.includes('test.com') || u.email === 'thomas.dubois@lycee.fr')) return false
+        return true
+      })
+      .map((u: any) => {
+        const prefs = typeof u.preferences === 'object' && u.preferences !== null ? u.preferences : {}
+        const rawLat = prefs.latitude ?? u.latitude ?? null
+        const rawLng = prefs.longitude ?? u.longitude ?? null
+        const lat = rawLat !== null && !isNaN(Number(rawLat)) ? Number(rawLat) : null
+        const lng = rawLng !== null && !isNaN(Number(rawLng)) ? Number(rawLng) : null
+
+        return {
+          id: u.id,
+          full_name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
+          email: u.email,
+          avatar_url: u.avatar_url,
+          school_name: u.school_name || 'Lycée',
+          class_level: u.class_level || 'terminale',
+          specialties: Array.isArray(u.specialties) ? u.specialties : [],
+          academic_goal: u.academic_goal,
+          post_bac_target: u.post_bac_target,
+          latitude: lat,
+          longitude: lng,
+          is_visible: u.is_visible_on_school ?? true,
+          is_verified: Boolean(prefs.is_verified || u.is_pro),
+          bio: prefs.bio || (u.specialties?.length ? `Spécialités : ${u.specialties.join(', ')}` : 'Élève actif sur OptiNote'),
         }
       })
-    }
 
-    return NextResponse.json({ users: combinedUsers })
+    return NextResponse.json({ users: mappedUsers })
   } catch (err) {
     console.error('Error fetching map users:', err)
-    return NextResponse.json({ users: MOCK_MAP_STUDENTS })
+    return NextResponse.json({ users: [] })
   }
 }
-
-import { updateUserLocationSchema } from '@/lib/validators/campus'
 
 export async function POST(request: NextRequest) {
   try {
@@ -139,14 +77,32 @@ export async function POST(request: NextRequest) {
 
     const { latitude, longitude, is_visible, bio } = parsed.data
 
+    // Récupérer les préférences actuelles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('preferences, is_visible_on_school')
+      .eq('id', user.id)
+      .single()
+
+    const currentPrefs = (existingProfile && typeof existingProfile.preferences === 'object' && existingProfile.preferences !== null)
+      ? existingProfile.preferences
+      : {}
+
+    const updatedPrefs = {
+      ...currentPrefs,
+      ...(latitude !== undefined ? { latitude } : {}),
+      ...(longitude !== undefined ? { longitude } : {}),
+      ...(bio !== undefined ? { bio: bio.trim() } : {}),
+    }
+
     const updatePayload: Record<string, any> = {
+      preferences: updatedPrefs,
       updated_at: new Date().toISOString(),
     }
 
-    if (latitude !== undefined) updatePayload.latitude = latitude
-    if (longitude !== undefined) updatePayload.longitude = longitude
-    if (is_visible !== undefined) updatePayload.is_visible = is_visible
-    if (bio !== undefined) updatePayload.bio = bio.trim()
+    if (is_visible !== undefined) {
+      updatePayload.is_visible_on_school = is_visible
+    }
 
     const { data, error } = await supabase
       .from('profiles')
@@ -160,7 +116,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, profile: data })
+    return NextResponse.json({
+      success: true,
+      profile: {
+        ...data,
+        latitude,
+        longitude,
+        bio,
+        is_visible: data.is_visible_on_school,
+      },
+    })
   } catch (err: any) {
     console.error('Location update error:', err)
     return NextResponse.json(

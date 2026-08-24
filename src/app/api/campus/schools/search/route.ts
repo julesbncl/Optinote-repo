@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Seed fallback data au cas où l'API externe est injoignable
+// Seed fallback data au cas où l'API externe est injoignable (Lycées uniquement)
 const FALLBACK_SCHOOLS = [
   { uai: '0750654D', name: 'Lycée Henri-IV', city: 'Paris', postal_code: '75005', academy: 'Paris', latitude: 48.8463, longitude: 2.3473, type: 'Lycée' },
   { uai: '0750655E', name: 'Lycée Louis Le Grand', city: 'Paris', postal_code: '75005', academy: 'Paris', latitude: 48.8480, longitude: 2.3441, type: 'Lycée' },
@@ -28,19 +28,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Appel à l'API Explore v2.1 de l'Annuaire de l'Éducation Nationale
-    const sanitizedQuery = query.replace(/['"]/g, ' ')
-    const apiUrl = `https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records?where=search(nom_etablissement,%20%22${encodeURIComponent(
+    const sanitizedQuery = query.replace(/['"]/g, ' ').trim()
+
+    // Requête stricte ciblant les lycées (généraux, technologiques, professionnels, polyvalents)
+    const apiUrl = `https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records?where=(type_etablissement%20like%20%22Lyc%C3%A9e%25%22%20or%20search(nom_etablissement%2C%20%22lyc%C3%A9e%22)%20or%20search(nom_etablissement%2C%20%22lycee%22)%20or%20search(libelle_nature%2C%20%22LYCEE%22))%20and%20(search(nom_etablissement%2C%20%22${encodeURIComponent(
       sanitizedQuery
-    )}%22)%20or%20search(nom_commune,%20%22${encodeURIComponent(
+    )}%22)%20or%20search(nom_commune%2C%20%22${encodeURIComponent(
       sanitizedQuery
-    )}%22)&limit=15`
+    )}%22)%20or%20search(code_postal%2C%20%22${encodeURIComponent(
+      sanitizedQuery
+    )}%22))&limit=25`
 
     const response = await fetch(apiUrl, {
       headers: {
         Accept: 'application/json',
       },
-      next: { revalidate: 3600 }, // Cache 1h
+      next: { revalidate: 3600 },
     })
 
     if (!response.ok) {
@@ -55,33 +58,66 @@ export async function GET(request: NextRequest) {
         const lat = r.latitude || r.position?.lat || null
         const lon = r.longitude || r.position?.lon || null
 
+        const rawType = r.type_etablissement || ''
+        const rawNature = r.libelle_nature || ''
+        const rawName = r.nom_etablissement || ''
+
+        // Formatage clair du type de lycée
+        let displayType = 'Lycée'
+        if (rawNature.includes('POLYVALENT')) displayType = 'Lycée Polyvalent'
+        else if (rawNature.includes('PROFESSIONNEL') || rawNature.includes('SECTION D ENSEIGNEMENT PROFESSIONNEL')) displayType = 'Lycée Professionnel'
+        else if (rawNature.includes('GENERAL ET TECHNOLOGIQUE')) displayType = 'Lycée Général & Techno'
+        else if (rawNature.includes('AGRICOLE')) displayType = 'Lycée Agricole'
+        else if (rawType.includes('Lycée')) displayType = rawType
+
         return {
           uai: r.identifiant_de_l_etablissement,
-          name: r.nom_etablissement,
-          type: r.type_etablissement || r.libelle_nature || 'Lycée',
+          name: rawName,
+          type: displayType,
           city: r.nom_commune,
           postal_code: r.code_postal,
           academy: r.libelle_academie || r.nom_academie || '',
-          latitude: lat,
-          longitude: lon,
+          latitude: lat ? Number(lat) : null,
+          longitude: lon ? Number(lon) : null,
           address: r.adresse_1 || '',
+          rawType,
+          rawNature,
         }
       })
-      // Privilégier les Lycées et collèges
-      .filter((item: any) => item.latitude && item.longitude && item.name)
-      .sort((a: any, b: any) => {
-        const isLycA = a.type?.toLowerCase().includes('lycée') || a.name?.toLowerCase().includes('lycée')
-        const isLycB = b.type?.toLowerCase().includes('lycée') || b.name?.toLowerCase().includes('lycée')
-        if (isLycA && !isLycB) return -1
-        if (!isLycA && isLycB) return 1
-        return 0
+      // Filtrage strict : UNIQUEMENT les Lycées (exclusion systématique des écoles primaires, maternelles, collèges sans lycée)
+      .filter((item: any) => {
+        if (!item.latitude || !item.longitude || !item.name) return false
+
+        const nameLower = item.name.toLowerCase()
+        const rawTypeLower = (item.rawType || '').toLowerCase()
+        const rawNatureLower = (item.rawNature || '').toLowerCase()
+
+        const isExplicitSchoolOrCollege =
+          (nameLower.includes('école') ||
+            nameLower.includes('ecole') ||
+            nameLower.includes('collège') ||
+            nameLower.includes('college')) &&
+          !nameLower.includes('lycée') &&
+          !nameLower.includes('lycee') &&
+          !rawNatureLower.includes('lycee')
+
+        const isLycee =
+          rawTypeLower.includes('lycée') ||
+          rawTypeLower.includes('lycee') ||
+          rawNatureLower.includes('lycee') ||
+          rawNatureLower.includes('professionnel') ||
+          nameLower.includes('lycée') ||
+          nameLower.includes('lycee')
+
+        return isLycee && !isExplicitSchoolOrCollege
       })
+      .slice(0, 12)
 
     return NextResponse.json({ results: formatted })
   } catch (error) {
     console.error('Error querying data.education.gouv.fr API:', error)
 
-    // Fallback recherche locale
+    // Fallback recherche locale (Lycées uniquement)
     const localFiltered = FALLBACK_SCHOOLS.filter(
       (s) =>
         s.name.toLowerCase().includes(query.toLowerCase()) ||

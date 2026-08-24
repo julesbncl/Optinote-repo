@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Subject, Grade, Profile } from '@/types/database'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import { PaywallModal } from '@/components/paywall/PaywallModal'
 import { CurriculumSetupModal } from '@/components/grades/CurriculumSetupModal'
 import { EditableCoefficientBadge } from '@/components/grades/EditableCoefficientBadge'
@@ -61,12 +62,7 @@ export default function GradesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'subject' | 'grade'; id: string } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   useEffect(() => {
     loadData()
@@ -106,12 +102,13 @@ export default function GradesPage() {
 
   // Open add grade modal for a specific subject
   function openAddGradeForSubject(subjectId: string) {
+    // Si l'utilisateur est Pro, les limites sont 100% levées (notes illimitées)
     if (!isSubscribed) {
       const existingGrades = grades.filter(
         (g) => g.subject_id === subjectId && g.trimester === selectedTrimester && !g.is_simulated
       )
-      if (existingGrades.length >= 1) {
-        toast.error('Limite de l’Essai gratuit atteinte : 1 note max par matière. Débloque le mode Pro pour des notes illimitées !')
+      if (existingGrades.length >= 2) {
+        toast.error('Limite de la version gratuite atteinte : 2 notes max par matière. Débloque le mode Pro pour des notes illimitées !')
         setShowPaywallModal(true)
         return
       }
@@ -229,15 +226,16 @@ export default function GradesPage() {
     const label = (formData.get('label') as string) || null
     const date = (formData.get('date') as string) || new Date().toISOString()
 
-    // Quota check: free accounts can only have 1 real grade per subject
+    // Quota check: seuls les comptes gratuits sans abonnement Pro sont limités à 2 notes par matière
     if (!isSubscribed && !isSimulated) {
       const existingGrades = grades.filter(
         (g) => g.subject_id === subjectId && g.trimester === selectedTrimester && !g.is_simulated
       )
-      if (existingGrades.length >= 1) {
+      if (existingGrades.length >= 2) {
         setIsSubmitting(false)
         setShowAddGrade(false)
         setShowPaywallModal(true)
+        toast.error('Limite de la version gratuite atteinte : 2 notes max par matière. Débloque le mode Pro pour des notes illimitées !')
         return
       }
     }

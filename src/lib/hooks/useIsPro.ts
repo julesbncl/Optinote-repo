@@ -13,6 +13,19 @@ import type { Profile } from '@/types/database'
  *
  * Returns `{ isPro, profile, loading }`.
  */
+export function checkIsPro(profile: Partial<Profile> | null | undefined): boolean {
+  if (!profile) return false
+  if (profile.is_pro === true || (profile as any).is_pro === 'true') return true
+  if (['active', 'trialing'].includes(profile.subscription_status || '')) return true
+  if (
+    profile.subscription_tier &&
+    !['free', 'inactive', 'none', ''].includes(profile.subscription_tier.toLowerCase())
+  ) {
+    return true
+  }
+  return false
+}
+
 export function useIsPro() {
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -46,12 +59,7 @@ export function useIsPro() {
     load()
   }, [supabase])
 
-  const isPro = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isPro = checkIsPro(profile)
 
   return { isPro, profile, loading }
 }

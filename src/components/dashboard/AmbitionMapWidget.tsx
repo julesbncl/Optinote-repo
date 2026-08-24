@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Eye,
@@ -23,75 +23,6 @@ interface AmbitionPeer {
   top: string
   left: string
 }
-
-const PEERS: AmbitionPeer[] = [
-  {
-    id: '1',
-    name: 'Léa M.',
-    avatar: '👩🏼‍🎓',
-    school: 'Lycée Henri IV',
-    specialties: 'Maths • Physique',
-    ambition: 'Vise CPGE MPSI / Ingénieur 🚀',
-    badgeColor: 'bg-primary-50 text-primary-700 border-primary-200',
-    top: '40%',
-    left: '46%',
-  },
-  {
-    id: '2',
-    name: 'Yanis K.',
-    avatar: '🧑🏽‍🎓',
-    school: 'Lycée Louis-le-Grand',
-    specialties: 'Maths • NSI',
-    ambition: 'Vise EPITA / Informatique 💻',
-    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-    top: '28%',
-    left: '75%',
-  },
-  {
-    id: '3',
-    name: 'Inès B.',
-    avatar: '👩🏽‍🎓',
-    school: 'Lycée Montaigne',
-    specialties: 'SES • HGGSP',
-    ambition: 'Vise Sciences Po & Droit ⚖️',
-    badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
-    top: '60%',
-    left: '30%',
-  },
-  {
-    id: '4',
-    name: 'Mamadou D.',
-    avatar: '🧑🏿‍🎓',
-    school: 'Lycée Fénelon',
-    specialties: 'SVT • Physique',
-    ambition: 'Vise PASS / Médecine 🩺',
-    badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    top: '25%',
-    left: '22%',
-  },
-  {
-    id: '5',
-    name: 'Camille R.',
-    avatar: '👩🏻‍🎓',
-    school: 'Lycée Condorcet',
-    specialties: 'Maths • SES',
-    ambition: 'Vise Dauphine / Finance 📊',
-    badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
-    top: '75%',
-    left: '65%',
-  },
-  {
-    id: '6',
-    name: 'Lucas P.',
-    avatar: '🧑🏼‍🎓',
-    school: 'Lycée Saint-Louis',
-    specialties: 'Physique • Chimie',
-    ambition: 'Vise Prépa PCSI ⚡',
-    badgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
-    top: '52%',
-    left: '82%',
-  },
-]
 
 const DASHBOARD_CHANNELS = [
   {
@@ -136,10 +67,49 @@ export function AmbitionMapWidget({
   const [isVisible, setIsVisible] = useState(
     profile?.is_visible_on_school ?? true
   )
-  const [selectedPeer, setSelectedPeer] = useState<AmbitionPeer>(PEERS[0])
+  const [realPeers, setRealPeers] = useState<AmbitionPeer[]>([])
+  const [selectedPeer, setSelectedPeer] = useState<AmbitionPeer | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const schoolName = profile?.school_name || 'Lycée Henri IV'
+  // Charger les vrais camarades connectés depuis la base de données
+  useEffect(() => {
+    async function loadPeers() {
+      try {
+        const res = await fetch('/api/campus/users/location')
+        if (res.ok) {
+          const data = await res.json()
+          const users: any[] = data.users || []
+          const positions = [
+            { top: '35%', left: '72%' },
+            { top: '65%', left: '28%' },
+            { top: '28%', left: '25%' },
+            { top: '72%', left: '68%' },
+          ]
+          const mapped: AmbitionPeer[] = users
+            .filter((u) => u.id !== profile?.id && u.email !== profile?.email)
+            .slice(0, 4)
+            .map((u, idx) => ({
+              id: u.id,
+              name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
+              avatar: (u.full_name || 'L')[0].toUpperCase(),
+              school: u.school_name || 'Lycée',
+              specialties: Array.isArray(u.specialties) ? u.specialties.join(' • ') : '',
+              ambition: u.post_bac_target ? `Vise ${u.post_bac_target}` : 'Lycéen actif 🚀',
+              badgeColor: 'bg-primary-50 text-primary-700 border-primary-200',
+              top: positions[idx % positions.length].top,
+              left: positions[idx % positions.length].left,
+            }))
+          setRealPeers(mapped)
+          if (mapped.length > 0) setSelectedPeer(mapped[0])
+        }
+      } catch (err) {
+        console.warn('Error loading real peers in AmbitionMapWidget:', err)
+      }
+    }
+    loadPeers()
+  }, [profile?.id, profile?.email])
+
+  const schoolName = profile?.school_name || 'mon lycée'
 
   async function toggleVisibility() {
     if (!profile) return
@@ -296,9 +266,9 @@ export function AmbitionMapWidget({
             </div>
           </div>
 
-          {/* Peer markers on map */}
-          {PEERS.map((peer) => {
-            const isSelected = selectedPeer.id === peer.id
+          {/* Peer markers on map (Uniquement vrais camarades actifs) */}
+          {realPeers.map((peer) => {
+            const isSelected = selectedPeer?.id === peer.id
             return (
               <div
                 key={peer.id}

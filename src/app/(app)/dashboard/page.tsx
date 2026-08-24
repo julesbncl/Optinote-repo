@@ -60,32 +60,11 @@ const DEFAULT_MOCK_PROFILE: Profile = {
   preferences: {},
   is_verified: true,
   verification_status: 'verified',
-  latitude: 48.8456,
-  longitude: 2.3486,
+  latitude: 43.610769,
+  longitude: 3.876716,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
-
-const SUGGESTED_DASHBOARD_PEERS = [
-  {
-    id: 'peer-1',
-    name: 'Léa M.',
-    avatar: 'LM',
-    school: 'Henri-IV',
-    specialties: 'Maths • Phys.',
-    ambition: 'Vise CPGE MPSI',
-    is_verified: true,
-  },
-  {
-    id: 'peer-2',
-    name: 'Yanis K.',
-    avatar: 'YK',
-    school: 'Louis-le-Grand',
-    specialties: 'Maths • NSI',
-    ambition: 'Vise EPITA',
-    is_verified: true,
-  },
-]
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -112,8 +91,8 @@ export default function DashboardPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [mapUsers, setMapUsers] = useState<Partial<Profile>[]>([])
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>({
-    latitude: 48.8456,
-    longitude: 2.3486,
+    latitude: 43.610769,
+    longitude: 3.876716,
   })
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ latitude: number; longitude: number; zoom?: number } | null>(null)
@@ -268,6 +247,56 @@ export default function DashboardPage() {
               })
             }
           }
+
+          // Détection automatique du retour après paiement Stripe réussi
+          if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search)
+            const isPaymentSuccess = urlParams.get('payment') === 'success'
+            const sessionId = urlParams.get('session_id')
+
+            if (isPaymentSuccess || sessionId) {
+              if (sessionId) {
+                fetch('/api/stripe/verify-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sessionId }),
+                })
+                  .then((r) => r.json())
+                  .then((res) => {
+                    if (res.success) {
+                      toast.success('🎉 Félicitations ! Ton abonnement OptiNote Pro est actif !', {
+                        duration: 6000,
+                      })
+                      supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', user.id)
+                        .single()
+                        .then(({ data: freshProfile }) => {
+                          if (freshProfile) setProfile(freshProfile)
+                        })
+                    }
+                  })
+                  .catch(console.error)
+              } else {
+                fetch('/api/stripe/sync', { method: 'POST' })
+                  .then((r) => r.json())
+                  .then((res) => {
+                    if (res.is_pro) {
+                      toast.success('🎉 Félicitations ! Ton abonnement OptiNote Pro est actif !', {
+                        duration: 6000,
+                      })
+                      if (res.profile) setProfile(res.profile)
+                    }
+                  })
+                  .catch(console.error)
+              }
+
+              // Nettoyer les query params de l'URL sans rechargement
+              window.history.replaceState({}, document.title, window.location.pathname)
+            }
+          }
+
 
           if (schoolsRes.ok) {
             const sData = await schoolsRes.json()
@@ -625,11 +654,12 @@ export default function DashboardPage() {
               isCurrentUserVerified={profile?.is_verified}
               defaultCenter={[46.603354, 1.888334]}
               defaultZoom={5.0}
-              height="h-[280px] sm:h-[330px] lg:h-[360px]"
+              height="h-[220px] sm:h-[280px] lg:h-[340px]"
               isLocked={!isSubscribed}
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}
               onBoundsChange={handleBoundsChange}
+              onLocationFound={(loc) => setUserLocation(loc)}
               onContactStudent={(student) => {
                 if (student && student.id) {
                   router.push(
@@ -690,57 +720,72 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* Liste responsive des camarades suggérés */}
+          {/* Liste responsive des camarades réels de la communauté */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-1">
-            {SUGGESTED_DASHBOARD_PEERS.map((peer) => (
-              <div
-                key={peer.id}
-                className="flex items-center justify-between p-2 rounded-xl bg-surface-secondary/60 border border-border/80 text-[10px] hover:border-primary-300 transition-all shadow-2xs"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-primary-600 to-purple-600 text-white font-bold text-[9px] flex items-center justify-center flex-shrink-0 shadow-2xs">
-                    {peer.avatar}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-text-primary truncate flex items-center gap-1">
-                      <span>{peer.name}</span>
-                      {peer.is_verified && (
-                        <span className="text-[8px]" title="Lycéen Certifié 🛡️">
-                          🛡️
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[8.5px] text-text-tertiary truncate">
-                      {peer.school} • {peer.specialties}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      handleSendDashboardFriendRequest(peer)
-                    }}
-                    className="h-6 px-2 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                    title={`Ajouter ${peer.name}`}
-                  >
-                    <UserPlus className="h-2.5 w-2.5" />
-                    <span>Ajouter</span>
-                  </button>
-                  <Link
-                    href={`/campus/messages?friendId=${peer.id}&friendName=${encodeURIComponent(peer.name)}`}
-                    className="h-6 px-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                    title={`Échanger avec ${peer.name}`}
-                  >
-                    <MessageSquare className="h-2.5 w-2.5" />
-                    <span>Échanger</span>
-                  </Link>
-                </div>
+            {mapUsers.filter((u) => u.id !== profile.id).length === 0 ? (
+              <div className="col-span-full p-3 rounded-xl bg-surface-secondary/40 border border-dashed border-border text-center text-[10px] text-text-tertiary">
+                Aucun autre camarade connecté pour le moment. Rejoins les salons du Campus pour échanger !
               </div>
-            ))}
+            ) : (
+              mapUsers
+                .filter((u) => u.id !== profile.id)
+                .slice(0, 4)
+                .map((peer) => {
+                  const name = peer.full_name || 'Lycéen'
+                  const initial = name[0]?.toUpperCase() || 'L'
+                  const school = peer.school_name || 'Lycée'
+                  const specialties = Array.isArray(peer.specialties) ? peer.specialties.slice(0, 2).join(' • ') : 'Lycéen'
+                  return (
+                    <div
+                      key={peer.id}
+                      className="flex items-center justify-between p-2 rounded-xl bg-surface-secondary/60 border border-border/80 text-[10px] hover:border-primary-300 transition-all shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-primary-600 to-purple-600 text-white font-bold text-[9px] flex items-center justify-center flex-shrink-0 shadow-2xs">
+                          {initial}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-text-primary truncate flex items-center gap-1">
+                            <span>{name}</span>
+                            {peer.is_verified && (
+                              <span className="text-[8px]" title="Lycéen Certifié 🛡️">
+                                🛡️
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[8.5px] text-text-tertiary truncate">
+                            {school} • {specialties}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            handleSendDashboardFriendRequest({ id: peer.id || '', name })
+                          }}
+                          className="h-6 px-2 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          title={`Ajouter ${name}`}
+                        >
+                          <UserPlus className="h-2.5 w-2.5" />
+                          <span>Ajouter</span>
+                        </button>
+                        <Link
+                          href={`/campus/messages?friendId=${peer.id}&friendName=${encodeURIComponent(name)}`}
+                          className="h-6 px-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          title={`Échanger avec ${name}`}
+                        >
+                          <MessageSquare className="h-2.5 w-2.5" />
+                          <span>Échanger</span>
+                        </Link>
+                      </div>
+                    </div>
+                  )
+                })
+            )}
           </div>
 
           {/* Footer cliquable vers /campus */}

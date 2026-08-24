@@ -63,79 +63,28 @@ export interface RevisionSession {
   joined?: boolean
 }
 
-export const DEFAULT_REVISION_SESSIONS: RevisionSession[] = [
-  {
-    id: 'rev-1',
-    subject: 'Mathématiques',
-    title: 'Entraînement DS Dérivées & Théorème TVI',
-    type: 'online',
-    date_time: "Aujourd'hui à 17h30",
-    host_name: 'Léa M.',
-    host_avatar: 'LM',
-    host_school: 'Lycée Henri-IV',
-    max_participants: 4,
-    current_participants: 3,
-  },
-  {
-    id: 'rev-2',
-    subject: 'Physique-Chimie',
-    title: 'Exercices & Annales Bac Mécanique de Newton',
-    type: 'in_person',
-    location: 'CDI Lycée Condorcet (Paris 9e)',
-    date_time: 'Demain à 16h00',
-    host_name: 'Thomas D.',
-    host_avatar: 'TD',
-    host_school: 'Lycée Condorcet',
-    max_participants: 5,
-    current_participants: 2,
-  },
-  {
-    id: 'rev-3',
-    subject: 'Philosophie',
-    title: 'Plan détaillé dissertation : La Vérité & Le Doute',
-    type: 'online',
-    date_time: 'Samedi à 14h00',
-    host_name: 'Inès B.',
-    host_avatar: 'IB',
-    host_school: 'Lycée Montaigne',
-    max_participants: 4,
-    current_participants: 2,
-  },
-  {
-    id: 'rev-4',
-    subject: 'SES',
-    title: 'Croquis géopolitique & schémas de croissance',
-    type: 'in_person',
-    location: 'Bibliothèque Sainte-Barbe (Paris 5e)',
-    date_time: 'Vendredi à 18h00',
-    host_name: 'Yanis K.',
-    host_avatar: 'YK',
-    host_school: 'Lycée Louis-le-Grand',
-    max_participants: 6,
-    current_participants: 4,
-  },
-]
+export const DEFAULT_REVISION_SESSIONS: RevisionSession[] = []
 
-const MOCK_PROFILE: Profile = {
-  id: 'mock-user-001',
-  email: 'thomas.dubois@lycee.fr',
-  full_name: 'Thomas Dubois',
+const DEFAULT_INITIAL_PROFILE: Profile = {
+  id: '',
+  email: '',
+  full_name: '',
   avatar_url: null,
   class_level: 'terminale',
   school_id: null,
-  school_name: 'Lycée Condorcet (Paris 9e)',
-  academic_goal: 'excellence',
-  post_bac_target: 'ingenieur',
-  specialties: ['Mathématiques', 'Physique-Chimie'],
-  is_pro: true,
-  subscription_status: 'active',
-  subscription_tier: 'monthly',
+  school_name: null,
+  academic_goal: null,
+  post_bac_target: null,
+  specialties: [],
+  is_pro: false,
+  subscription_status: 'inactive',
+  subscription_tier: 'free',
   is_visible_on_school: true,
-  onboarding_completed: true,
+  onboarding_completed: false,
   preferences: {},
-  latitude: 48.8744,
-  longitude: 2.3275,
-  bio: 'Objectif CPGE MPSI ou prépa intégrée. Dispo pour entraide en Maths Expertes et Physique !',
+  latitude: 43.610769,
+  longitude: 3.876716,
+  bio: '',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -153,49 +102,6 @@ const ALL_SUBJECT_FILTERS = [
   { id: 'nsi', name: 'NSI', emoji: '💻' },
 ]
 
-// Mock peers for suggestions
-const SUGGESTED_PEERS = [
-  {
-    id: 'peer-1',
-    name: 'Léa M.',
-    avatar: 'LM',
-    school: 'Lycée Henri-IV',
-    class_level: 'terminale',
-    specialties: ['Maths', 'Physique-Chimie'],
-    target: 'CPGE MPSI / Ingénieur',
-    is_verified: true,
-  },
-  {
-    id: 'peer-2',
-    name: 'Yanis K.',
-    avatar: 'YK',
-    school: 'Lycée Louis-le-Grand',
-    class_level: 'terminale',
-    specialties: ['Maths', 'NSI'],
-    target: 'EPITA / Informatique',
-    is_verified: true,
-  },
-  {
-    id: 'peer-3',
-    name: 'Inès B.',
-    avatar: 'IB',
-    school: 'Lycée Montaigne',
-    class_level: 'premiere',
-    specialties: ['SES', 'HGGSP'],
-    target: 'Sciences Po Paris',
-    is_verified: true,
-  },
-  {
-    id: 'peer-4',
-    name: 'Mamadou D.',
-    avatar: 'MD',
-    school: 'Lycée Fénelon',
-    class_level: 'terminale',
-    specialties: ['SVT', 'Physique-Chimie'],
-    target: 'PASS Médecine',
-    is_verified: false,
-  },
-]
 
 const DEFAULT_CHANNELS: ChatChannel[] = [
   {
@@ -303,7 +209,7 @@ export default function CampusHubPage() {
   const schoolNameParam = searchParams.get('schoolName')
 
   const supabase = createClient()
-  const [profile, setProfile] = useState<Profile>(MOCK_PROFILE)
+  const [profile, setProfile] = useState<Profile>(DEFAULT_INITIAL_PROFILE)
   const [channels, setChannels] = useState<ChatChannel[]>(DEFAULT_CHANNELS)
   const [friends, setFriends] = useState<Partial<Profile>[]>([])
   const [pendingReceived, setPendingReceived] = useState<Friendship[]>([])
@@ -317,8 +223,8 @@ export default function CampusHubPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [mapUsers, setMapUsers] = useState<Partial<Profile>[]>([])
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>({
-    latitude: 48.8744,
-    longitude: 2.3275,
+    latitude: 43.610769,
+    longitude: 3.876716,
   })
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ latitude: number; longitude: number; zoom?: number } | null>(null)
@@ -361,9 +267,9 @@ export default function CampusHubPage() {
       type: proposeType,
       location: proposeType === 'in_person' ? proposeLocation.trim() || 'CDI / Salle d’étude' : undefined,
       date_time: proposeDateTime.trim() || "Aujourd'hui à 17h30",
-      host_name: profile.full_name || 'Thomas D.',
-      host_avatar: profile.full_name ? profile.full_name.split(' ').map((n) => n[0]).join('') : 'TD',
-      host_school: profile.school_name || 'Lycée Condorcet',
+      host_name: profile.full_name || 'Moi',
+      host_avatar: profile.full_name ? profile.full_name.split(' ').map((n) => n[0]).join('') : 'MOI',
+      host_school: profile.school_name || 'Mon Lycée',
       max_participants: Number(proposeMaxParticipants) || 4,
       current_participants: 1,
       joined: true,
@@ -416,18 +322,91 @@ export default function CampusHubPage() {
     })
   }, [revisionSessions, sessionsFilter, sessionsSearch])
 
+  // Synchronisation et recherche en direct des utilisateurs dans Supabase
+  const [searchResults, setSearchResults] = useState<any[]>([])
+
+  useEffect(() => {
+    if (!mobilePeerSearch.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/campus/users/search?q=${encodeURIComponent(mobilePeerSearch.trim())}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.users) {
+            setSearchResults(data.users)
+          }
+        }
+      } catch (err) {
+        console.warn('Peer live search error:', err)
+      }
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [mobilePeerSearch])
+
+  // Fusion des utilisateurs réels de Supabase et des résultats de recherche (hors utilisateur connecté)
+  const allAvailablePeers = useMemo(() => {
+    const list: any[] = []
+    const seenIds = new Set<string>()
+    const currentId = profile?.id
+    const currentEmail = profile?.email?.toLowerCase()
+
+    // 1. Résultats de recherche en direct prioritaire
+    searchResults.forEach((u) => {
+      if (u.id && u.id !== currentId && u.email?.toLowerCase() !== currentEmail && !seenIds.has(u.id)) {
+        seenIds.add(u.id)
+        list.push({
+          id: u.id,
+          name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
+          email: u.email,
+          avatar: (u.full_name || 'L')[0].toUpperCase(),
+          school: u.school_name || 'Lycée',
+          class_level: u.class_level || 'terminale',
+          specialties: Array.isArray(u.specialties) ? u.specialties : [],
+          target: u.post_bac_target || 'Orientation Post-Bac',
+          is_verified: Boolean(u.is_verified || u.is_pro),
+        })
+      }
+    })
+
+    // 2. Utilisateurs réels chargés depuis la base de données
+    mapUsers.forEach((u) => {
+      if (u.id && u.id !== currentId && (u as any).email?.toLowerCase() !== currentEmail && !seenIds.has(u.id)) {
+        seenIds.add(u.id)
+        list.push({
+          id: u.id,
+          name: u.full_name || (u as any).email?.split('@')[0] || 'Lycéen',
+          email: (u as any).email,
+          avatar: (u.full_name || 'L')[0].toUpperCase(),
+          school: u.school_name || 'Lycée',
+          class_level: u.class_level || 'terminale',
+          specialties: Array.isArray(u.specialties) ? u.specialties : [],
+          target: u.post_bac_target || 'Orientation Post-Bac',
+          is_verified: Boolean(u.is_verified || (u as any).is_pro),
+        })
+      }
+    })
+
+    return list
+  }, [searchResults, mapUsers, profile?.id, profile?.email])
+
   const filteredSuggestedPeers = useMemo(() => {
-    if (!mobilePeerSearch.trim()) return SUGGESTED_PEERS
+    if (!mobilePeerSearch.trim()) return allAvailablePeers
     const q = mobilePeerSearch.toLowerCase().trim()
-    return SUGGESTED_PEERS.filter((p) => {
+    return allAvailablePeers.filter((p) => {
       return (
         p.name.toLowerCase().includes(q) ||
-        p.school.toLowerCase().includes(q) ||
-        p.specialties.some((s) => s.toLowerCase().includes(q)) ||
+        (p.email && p.email.toLowerCase().includes(q)) ||
+        (p.school && p.school.toLowerCase().includes(q)) ||
+        (p.specialties && p.specialties.some((s: string) => s.toLowerCase().includes(q))) ||
         (p.target && p.target.toLowerCase().includes(q))
       )
     })
-  }, [mobilePeerSearch])
+  }, [mobilePeerSearch, allAvailablePeers])
 
   // Chargement dynamique des lycées par zone géographique (Bounds / Bbox)
   const handleBoundsChange = useCallback(
@@ -481,7 +460,7 @@ export default function CampusHubPage() {
           if (pData) {
             setProfile(pData)
             setIsVisible(pData.is_visible_on_school ?? true)
-            if (pData.latitude && pData.longitude) {
+            if (pData.latitude && pData.longitude && Number(pData.latitude) !== 0) {
               const loc = {
                 latitude: Number(pData.latitude),
                 longitude: Number(pData.longitude),
@@ -505,9 +484,13 @@ export default function CampusHubPage() {
                     }),
                   }).catch(() => {})
                 },
-                () => {},
+                () => {
+                  setUserLocation({ latitude: 43.610769, longitude: 3.876716 })
+                },
                 { enableHighAccuracy: true, timeout: 8000 }
               )
+            } else {
+              setUserLocation({ latitude: 43.610769, longitude: 3.876716 })
             }
           }
         }
@@ -820,9 +803,11 @@ export default function CampusHubPage() {
               selectedSchoolId={selectedSchool?.id}
               flyToTarget={flyToTarget}
               isCurrentUserVerified={profile?.is_verified}
+              height="h-[220px] sm:h-[300px] lg:h-[380px]"
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}
               onBoundsChange={handleBoundsChange}
+              onLocationFound={(loc) => setUserLocation(loc)}
               onContactStudent={(student) => {
                 if (student && student.id) {
                   router.push(
@@ -850,15 +835,15 @@ export default function CampusHubPage() {
               </span>
             </div>
 
-            {/* Barre de recherche d'amis (Visible UNIQUEMENT sur mobile) */}
-            <div className="block sm:hidden relative">
+            {/* Barre de recherche d'élèves (Mobile & Desktop) */}
+            <div className="block relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
               <input
                 type="text"
                 value={mobilePeerSearch}
                 onChange={(e) => setMobilePeerSearch(e.target.value)}
                 placeholder="Rechercher un camarade, spécialité, lycée..."
-                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-surface-secondary border border-border text-[10px] font-medium text-text-primary placeholder:text-text-tertiary focus:outline-hidden focus:border-primary-500 focus:bg-surface transition-all shadow-2xs"
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-surface-secondary border border-border text-[10px] sm:text-xs font-medium text-text-primary placeholder:text-text-tertiary focus:outline-hidden focus:border-primary-500 focus:bg-surface transition-all shadow-2xs"
               />
               {mobilePeerSearch && (
                 <button
@@ -873,8 +858,13 @@ export default function CampusHubPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
               {filteredSuggestedPeers.length === 0 ? (
-                <div className="col-span-full py-3.5 text-center text-[10px] text-text-tertiary bg-surface-secondary/40 rounded-xl border border-dashed border-border">
-                  Aucun camarade trouvé pour &quot;{mobilePeerSearch}&quot; 🔍
+                <div className="col-span-full py-4 text-center text-[10.5px] text-text-tertiary bg-surface-secondary/40 rounded-xl border border-dashed border-border px-3 space-y-0.5">
+                  <p className="font-semibold text-text-secondary">
+                    {mobilePeerSearch ? `Aucun camarade trouvé pour "${mobilePeerSearch}" 🔍` : 'Aucun autre élève connecté pour le moment.'}
+                  </p>
+                  <p className="text-[9.5px] text-text-tertiary">
+                    {mobilePeerSearch ? 'Essaie une autre recherche.' : 'Partage OptiNote avec tes camarades de classe pour réviser ensemble ! 🚀'}
+                  </p>
                 </div>
               ) : (
                 filteredSuggestedPeers.map((peer) => (
@@ -904,7 +894,7 @@ export default function CampusHubPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-0.5 sm:gap-1">
-                      {peer.specialties.map((s, i) => (
+                      {peer.specialties.map((s: string, i: number) => (
                         <span
                           key={i}
                           className="text-[7.5px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.1 sm:py-0.2 rounded-md bg-purple-50 text-purple-700 border border-purple-200"
@@ -1542,7 +1532,7 @@ export default function CampusHubPage() {
             </label>
 
             <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {SUGGESTED_PEERS.map((peer) => {
+              {allAvailablePeers.map((peer) => {
                 const isInvited = invitedPeerIds.includes(peer.id)
                 return (
                   <div

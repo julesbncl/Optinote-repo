@@ -35,7 +35,9 @@ export interface SchoolMapProps {
   onSetUserSchool?: (school: School) => void
   onContactStudent?: (user: Partial<Profile>) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
+  onLocationFound?: (loc: { latitude: number; longitude: number }) => void
 }
+
 
 export function SchoolMap(props: SchoolMapProps) {
   return <DynamicSchoolMap {...props} />

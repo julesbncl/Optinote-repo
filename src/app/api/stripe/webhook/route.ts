@@ -41,20 +41,44 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session
         const userId = session.metadata?.supabase_user_id
         const planTier = session.metadata?.plan_tier || 'monthly'
+        const customerId = (session.customer as string) || undefined
+        const customerEmail =
+          session.customer_details?.email?.toLowerCase().trim() ||
+          session.customer_email?.toLowerCase().trim()
 
         if (userId) {
           await supabaseAdmin
             .from('profiles')
             .update({
-              stripe_customer_id: session.customer as string,
+              stripe_customer_id: customerId,
               subscription_tier: planTier,
               subscription_status: 'active',
               is_pro: true,
             })
             .eq('id', userId)
+        } else if (customerId) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              subscription_tier: planTier,
+              subscription_status: 'active',
+              is_pro: true,
+            })
+            .eq('stripe_customer_id', customerId)
+        } else if (customerEmail) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              stripe_customer_id: customerId,
+              subscription_tier: planTier,
+              subscription_status: 'active',
+              is_pro: true,
+            })
+            .eq('email', customerEmail)
         }
         break
       }
+
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import {
   MapContainer,
@@ -155,7 +155,7 @@ function createCurrentUserAvatarIcon(avatarUrl?: string | null, name?: string | 
   })
 }
 
-// Composant individuel pour chaque marqueur de Lycée avec gestion d'ouverture de Popup
+// Composant individuel pour chaque marqueur de Lycée avec gestion d'ouverture et fermeture STRICTE de Popup
 function SchoolMarkerItem({
   school,
   isSelected,
@@ -172,8 +172,11 @@ function SchoolMarkerItem({
   const markerRef = useRef<L.Marker>(null)
 
   useEffect(() => {
-    if (isSelected && markerRef.current) {
+    if (!markerRef.current) return
+    if (isSelected) {
       markerRef.current.openPopup()
+    } else {
+      markerRef.current.closePopup()
     }
   }, [isSelected])
 
@@ -188,7 +191,13 @@ function SchoolMarkerItem({
         },
       }}
     >
-      <Popup className="school-custom-popup" minWidth={280} maxWidth={320}>
+      <Popup
+        className="school-custom-popup"
+        minWidth={280}
+        maxWidth={320}
+        autoClose={true}
+        closeOnClick={false}
+      >
         <div className="p-3 space-y-2.5">
           <div className="flex items-start gap-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center flex-shrink-0">
@@ -248,11 +257,14 @@ function SchoolMarkerItem({
   )
 }
 
+
 // 4. Bouton flottant pour recentrer sur la position de l'utilisateur ("Recentrer sur moi")
 function RecenterButton({
   userLocation,
+  onLocationFound,
 }: {
   userLocation?: { latitude: number; longitude: number } | null
+  onLocationFound?: (loc: { latitude: number; longitude: number }) => void
 }) {
   const map = useMap()
   const [isLocating, setIsLocating] = useState(false)
@@ -261,45 +273,57 @@ function RecenterButton({
     e.stopPropagation()
     e.preventDefault()
 
-    if (userLocation) {
-      map.flyTo([userLocation.latitude, userLocation.longitude], 14, {
-        duration: 1.2,
-        easeLinearity: 0.25,
-      })
-    } else if (typeof window !== 'undefined' && navigator.geolocation) {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
       setIsLocating(true)
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setIsLocating(false)
-          map.flyTo([pos.coords.latitude, pos.coords.longitude], 14, {
+          const newLoc = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }
+          onLocationFound?.(newLoc)
+          map.flyTo([newLoc.latitude, newLoc.longitude], 14, {
             duration: 1.2,
             easeLinearity: 0.25,
           })
         },
-        () => {
+        (err) => {
           setIsLocating(false)
+          console.warn('Geolocation error:', err.message)
+          if (userLocation) {
+            map.flyTo([userLocation.latitude, userLocation.longitude], 13, {
+              duration: 1.2,
+              easeLinearity: 0.25,
+            })
+          }
         },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
       )
+    } else if (userLocation) {
+      map.flyTo([userLocation.latitude, userLocation.longitude], 13, {
+        duration: 1.2,
+        easeLinearity: 0.25,
+      })
     }
   }
 
   return (
     <div className="leaflet-top leaflet-right" style={{ pointerEvents: 'auto', zIndex: 1000 }}>
-      <div className="leaflet-control m-3">
+      <div className="leaflet-control m-2 sm:m-3">
         <button
           type="button"
           onClick={handleRecenter}
-          className="h-9 px-3 rounded-xl bg-surface/95 hover:bg-surface text-text-primary border border-border shadow-md hover:shadow-lg backdrop-blur-md font-extrabold text-xs flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 text-primary-700 hover:border-primary-400 group"
-          title="Recentrer la carte sur ma position"
+          className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-surface/95 hover:bg-surface text-text-primary border border-border shadow-md hover:shadow-lg backdrop-blur-md font-extrabold text-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 text-primary-700 hover:border-primary-400 group"
+          title="Recentrer la carte sur ma position GPS"
         >
           <LocateFixed
-            className={`h-4 w-4 text-primary-600 group-hover:text-primary-700 ${
+            className={`h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-600 group-hover:text-primary-700 ${
               isLocating ? 'animate-spin' : ''
             }`}
           />
-          <span className="text-[11px] font-black text-text-primary group-hover:text-primary-700">
-            Recentrer sur moi
+          <span className="text-[10px] sm:text-[11px] font-black text-text-primary group-hover:text-primary-700">
+            {isLocating ? 'Localisation...' : 'Recentrer sur moi'}
           </span>
         </button>
       </div>
@@ -328,6 +352,7 @@ interface SchoolMapClientProps {
   onSetUserSchool?: (school: School) => void
   onContactStudent?: (user: Partial<Profile>) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
+  onLocationFound?: (loc: { latitude: number; longitude: number }) => void
 }
 
 export default function SchoolMapClient({
@@ -351,6 +376,7 @@ export default function SchoolMapClient({
   onSetUserSchool,
   onContactStudent,
   onBoundsChange,
+  onLocationFound,
 }: SchoolMapClientProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -358,22 +384,44 @@ export default function SchoolMapClient({
     setMounted(true)
   }, [])
 
-  const containerHeight = height || 'h-[520px]'
+  // Hauteur responsive : 30-35% max de l'écran sur mobile pour laisser la place aux infos
+  const containerHeight = height || 'h-[32vh] min-h-[220px] max-h-[300px] sm:h-[400px] lg:h-[520px]'
 
   if (!mounted) {
     return (
       <div className={`${containerHeight} w-full rounded-3xl bg-surface-secondary flex flex-col items-center justify-center border border-border gap-2 text-text-tertiary animate-pulse`}>
         <div className="h-8 w-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
-        <span className="text-xs font-semibold">Chargement de la carte interactive de France...</span>
+        <span className="text-xs font-semibold">Chargement de la carte interactive...</span>
       </div>
     )
   }
 
-  // Coordonnées de centrage par défaut : Vue d'ensemble sur toute la France métropolitaine
-  const defaultCenter: [number, number] = propDefaultCenter || [46.603354, 1.888334]
-  const defaultZoom: number = propDefaultZoom ?? 5.0
+  // Coordonnées de centrage par défaut : Position utilisateur ou Sud de la France (Occitanie/PACA ~43.61, 3.88)
+  const defaultCenter: [number, number] =
+    propDefaultCenter ||
+    (userLocation ? [userLocation.latitude, userLocation.longitude] : [43.610769, 3.876716])
+  const defaultZoom: number = propDefaultZoom ?? (userLocation ? 10.0 : 7.0)
 
-  const currentSelectedSchool = schools.find((s) => s.id === selectedSchoolId)
+  // Déduplication stricte des lycées par ID et coordonnées/nom
+  const uniqueSchools = useMemo(() => {
+    const list: School[] = []
+    const seenKeys = new Set<string>()
+
+    schools.forEach((s: School) => {
+      if (!s.latitude || !s.longitude || !s.name) return
+      const normName = s.name.toLowerCase().trim().replace(/^(lycee|lycée)\s+/i, '')
+      const coordKey = `${normName}_${Number(s.latitude).toFixed(3)}_${Number(s.longitude).toFixed(3)}`
+      if (!seenKeys.has(s.id) && !seenKeys.has(coordKey)) {
+        seenKeys.add(s.id)
+        seenKeys.add(coordKey)
+        list.push(s)
+      }
+    })
+
+    return list
+  }, [schools])
+
+  const currentSelectedSchool = uniqueSchools.find((s: School) => s.id === selectedSchoolId)
   const isSelectedUserSchool = Boolean(
     currentSelectedSchool &&
       ((userSchoolId && userSchoolId === currentSelectedSchool.id) ||
@@ -421,7 +469,6 @@ export default function SchoolMapClient({
     const map = useMap()
     const lastTargetRef = useRef<{ latitude: number; longitude: number; zoom?: number } | null>(null)
 
-    // Centrage explicite uniquement si un NOUVEAU target a été explicitement passé (ex: sélection d'un lycée dans la recherche)
     useEffect(() => {
       if (target) {
         const isDifferent =
@@ -443,7 +490,7 @@ export default function SchoolMapClient({
     return null
   }
 
-  // Déterminer la position active de l'utilisateur connecté avec fallback garanti (Paris / Lycée)
+  // Déterminer la position active de l'utilisateur connecté avec fallback garanti (Sud de la France / Lycée)
   const effectiveUserLocation =
     userLocation ||
     (currentUserId && users.find((u) => u.id === currentUserId)?.latitude && users.find((u) => u.id === currentUserId)?.longitude
@@ -451,10 +498,10 @@ export default function SchoolMapClient({
           latitude: Number(users.find((u) => u.id === currentUserId)!.latitude),
           longitude: Number(users.find((u) => u.id === currentUserId)!.longitude),
         }
-      : { latitude: 48.8456, longitude: 2.3486 })
+      : { latitude: 43.610769, longitude: 3.876716 })
 
   return (
-    <div className={`relative ${containerHeight} w-full rounded-3xl overflow-hidden border border-border shadow-lg ${className || ''}`}>
+    <div className={`relative ${containerHeight} w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-border shadow-lg ${className || ''}`}>
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
@@ -468,7 +515,7 @@ export default function SchoolMapClient({
 
         <MapBoundsWatcher />
         <FlyToController target={flyToTarget || null} />
-        <RecenterButton userLocation={effectiveUserLocation} />
+        <RecenterButton userLocation={effectiveUserLocation} onLocationFound={onLocationFound} />
 
         {/* 1. MARQUEUR PROÉMINENT DE L'UTILISATEUR CONNECTÉ (Photo de profil + Halo radar) */}
         {effectiveUserLocation && (
@@ -498,8 +545,8 @@ export default function SchoolMapClient({
           </Marker>
         )}
 
-        {/* 2. Marqueurs des Lycées (Chargés dynamiquement par zone géographique) */}
-        {schools.map((school) => {
+        {/* 2. Marqueurs des Lycées (Chargés dynamiquement par zone géographique - DÉDUPLIQUÉS) */}
+        {uniqueSchools.map((school: School) => {
           const isSelected = selectedSchoolId === school.id
           const isUserSchool = Boolean(
             (userSchoolId && userSchoolId === school.id) ||
@@ -520,6 +567,7 @@ export default function SchoolMapClient({
             />
           )
         })}
+
 
         {/* 3. Marqueurs des Lycéens visibles (Campus Social) */}
         {users.map((student) => {

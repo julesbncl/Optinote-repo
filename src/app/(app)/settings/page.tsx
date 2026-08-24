@@ -26,6 +26,7 @@ import {
   BadgeCheck,
   Clock,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -58,6 +59,9 @@ export default function SettingsPage() {
   const router = useRouter()
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE)
+  const [fullName, setFullName] = useState('')
+  const [classLevel, setClassLevel] = useState<Profile['class_level']>('terminale')
+  const [schoolName, setSchoolName] = useState('')
   const [specialties, setSpecialties] = useState<string[]>(['Mathématiques', 'Physique-Chimie'])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -86,6 +90,9 @@ export default function SettingsPage() {
 
           if (data) {
             setProfile(data)
+            setFullName(data.full_name || '')
+            setClassLevel(data.class_level || 'terminale')
+            setSchoolName(data.school_name || '')
             setIsVisible(data.is_visible_on_school ?? true)
             setSpecialties(
               data.specialties && data.specialties.length > 0
@@ -98,6 +105,9 @@ export default function SettingsPage() {
           if (local) {
             const p: Profile = JSON.parse(local)
             setProfile(p)
+            setFullName(p.full_name || '')
+            setClassLevel(p.class_level || 'terminale')
+            setSchoolName(p.school_name || '')
             setIsVisible(p.is_visible_on_school ?? true)
             setSpecialties(p.specialties || ['Mathématiques', 'Physique-Chimie'])
           }
@@ -110,6 +120,7 @@ export default function SettingsPage() {
     }
     load()
   }, [supabase])
+
 
   function toggleSpecialty(name: string) {
     if (specialties.includes(name)) {
@@ -320,16 +331,11 @@ export default function SettingsPage() {
     setSaving(true)
     setSaved(false)
 
-    const formData = new FormData(e.currentTarget)
-    const fullName = formData.get('fullName') as string
-    const classLevel = (formData.get('classLevel') as Profile['class_level']) || 'terminale'
-    const schoolName = (formData.get('schoolName') as string) || 'Lycée Henri IV'
-
     const updatedProfile: Profile = {
       ...profile,
-      full_name: fullName,
+      full_name: fullName.trim() || profile.full_name,
       class_level: classLevel,
-      school_name: schoolName,
+      school_name: schoolName.trim(),
       specialties: specialties,
       is_visible_on_school: isVisible,
       updated_at: new Date().toISOString(),
@@ -344,9 +350,9 @@ export default function SettingsPage() {
         await supabase
           .from('profiles')
           .update({
-            full_name: fullName,
+            full_name: fullName.trim() || profile.full_name,
             class_level: classLevel,
-            school_name: schoolName,
+            school_name: schoolName.trim(),
             specialties: specialties,
             is_visible_on_school: isVisible,
             updated_at: new Date().toISOString(),
@@ -357,6 +363,7 @@ export default function SettingsPage() {
       setProfile(updatedProfile)
       localStorage.setItem('optinote_mock_profile', JSON.stringify(updatedProfile))
       setSaved(true)
+      toast.success('Profil et établissement enregistrés avec succès ! ✨')
 
       // Réinitialiser l'état validé après 2.8 secondes
       setTimeout(() => {
@@ -384,6 +391,32 @@ export default function SettingsPage() {
       toast.error('Erreur d’accès au portail Stripe')
     } finally {
       setPortalLoading(false)
+    }
+  }
+
+  const [syncLoading, setSyncLoading] = useState(false)
+
+  async function handleSyncSubscription() {
+    setSyncLoading(true)
+    try {
+      const res = await fetch('/api/stripe/sync', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.is_pro) {
+        toast.success(data.message || 'Abonnement Pro synchronisé avec succès ! ✨')
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user) {
+          const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+          if (p) setProfile(p)
+        }
+      } else {
+        toast(data.message || 'Aucun abonnement Stripe actif trouvé.', { icon: 'ℹ️' })
+      }
+    } catch {
+      toast.error('Erreur lors de la synchronisation avec Stripe.')
+    } finally {
+      setSyncLoading(false)
     }
   }
 
@@ -513,7 +546,8 @@ export default function SettingsPage() {
             <input
               type="text"
               name="fullName"
-              defaultValue={profile?.full_name || 'Thomas Dubois'}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
               placeholder="ex: Thomas Dubois"
               className="w-full h-7.5 px-2.5 text-xs bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:border-primary-400 focus:outline-hidden transition-all"
@@ -528,7 +562,8 @@ export default function SettingsPage() {
               </label>
               <select
                 name="classLevel"
-                defaultValue={profile?.class_level || 'terminale'}
+                value={classLevel || 'terminale'}
+                onChange={(e) => setClassLevel(e.target.value as any)}
                 className="w-full h-7.5 px-2 text-xs bg-surface border border-border rounded-lg text-text-primary focus:border-primary-400 focus:outline-hidden transition-all"
               >
                 {CLASS_LEVELS.map((level) => (
@@ -546,8 +581,9 @@ export default function SettingsPage() {
               <input
                 type="text"
                 name="schoolName"
-                defaultValue={profile?.school_name || 'Lycée Henri IV'}
-                placeholder="ex: Lycée Henri IV"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                placeholder="ex: Lycée La Merci Littoral, Lycée Henri IV..."
                 className="w-full h-7.5 px-2.5 text-xs bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:border-primary-400 focus:outline-hidden transition-all"
               />
             </div>
@@ -809,10 +845,21 @@ export default function SettingsPage() {
           2. EN SECOND (AU MILIEU) : FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)
           ═══════════════════════════════════════════════════════ */}
       <div className="space-y-1">
-        <h2 className="text-xs sm:text-sm font-bold text-text-primary flex items-center gap-1.5 px-0.5">
-          <CreditCard className="h-3.5 w-3.5 text-primary-600" />
-          <span>Formule & Abonnement</span>
-        </h2>
+        <div className="flex items-center justify-between px-0.5">
+          <h2 className="text-xs sm:text-sm font-bold text-text-primary flex items-center gap-1.5">
+            <CreditCard className="h-3.5 w-3.5 text-primary-600" />
+            <span>Formule & Abonnement</span>
+          </h2>
+          <button
+            type="button"
+            onClick={handleSyncSubscription}
+            disabled={syncLoading}
+            className="text-[10px] font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-primary-50 transition-colors cursor-pointer border border-primary-200/60"
+          >
+            <RefreshCw className={`h-3 w-3 ${syncLoading ? 'animate-spin text-primary-600' : ''}`} />
+            <span>{syncLoading ? 'Vérification...' : 'Synchroniser Stripe'}</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
           {/* Bloc Gauche : Version Découverte (Limitations mises en avant, mot 'Gratuit' supprimé) */}

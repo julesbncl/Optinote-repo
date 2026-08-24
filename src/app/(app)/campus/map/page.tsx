@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SchoolMap } from '@/components/campus/SchoolMap'
@@ -46,11 +46,11 @@ export default function CampusMapPage() {
   const [loading, setLoading] = useState(true)
   const [showPaywallModal, setShowPaywallModal] = useState(false)
 
-  // Gestion de la géolocalisation & visibilité
+  // Gestion de la géolocalisation & visibilité (Sud de la France par défaut si non renseigné)
   const [isLocating, setIsLocating] = useState(false)
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>({
-    latitude: 48.8456,
-    longitude: 2.3486,
+    latitude: 43.610769,
+    longitude: 3.876716,
   })
   const [flyToTarget, setFlyToTarget] = useState<{ latitude: number; longitude: number; zoom?: number } | null>(null)
   const [isVisible, setIsVisible] = useState(true)
@@ -95,6 +95,78 @@ export default function CampusMapPage() {
     []
   )
 
+  // 1. Recherche en direct d'établissements dans la base OpenData dès la saisie
+  useEffect(() => {
+    if (activeTab !== 'schools' || !search.trim() || search.trim().length < 2) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/campus/schools/search?q=${encodeURIComponent(search.trim())}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.results && data.results.length > 0) {
+            setSchools((prev) => {
+              const map = new Map<string, School>()
+              prev.forEach((s) => map.set(s.id, s))
+              data.results.forEach((r: any) => {
+                const sId = r.uai || r.id || `sch-${r.name.toLowerCase().replace(/\s+/g, '-')}`
+                const sObj: School = {
+                  id: sId,
+                  name: r.name,
+                  city: r.city || '',
+                  postal_code: r.postal_code || '',
+                  academy: r.academy || null,
+                  latitude: Number(r.latitude),
+                  longitude: Number(r.longitude),
+                  students_count: r.students_count || 1,
+                  created_at: new Date().toISOString(),
+                }
+                if (!map.has(sId)) {
+                  map.set(sId, sObj)
+                }
+              })
+              return Array.from(map.values())
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('School search sync error:', err)
+      }
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [search, activeTab])
+
+  // 2. Recherche en direct d'utilisateurs dans la base Supabase dès la saisie
+  useEffect(() => {
+    if (activeTab !== 'students' || !search.trim()) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/campus/users/search?q=${encodeURIComponent(search.trim())}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.users && data.users.length > 0) {
+            setMapUsers((prev) => {
+              const map = new Map<string, Partial<Profile>>()
+              prev.forEach((u) => {
+                if (u.id) map.set(u.id, u)
+              })
+              data.users.forEach((u: Partial<Profile>) => {
+                if (u.id) map.set(u.id, u)
+              })
+              return Array.from(map.values())
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('User search error:', err)
+      }
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [search, activeTab])
+
   // 1. Chargement des données (Profil, Lycées, Utilisateurs de la carte)
   useEffect(() => {
     async function loadCampusMapData() {
@@ -114,7 +186,7 @@ export default function CampusMapPage() {
             setProfile(pData)
             setIsVisible(pData.is_visible ?? true)
             setUserBio(pData.bio || '')
-            if (pData.latitude && pData.longitude) {
+            if (pData.latitude && pData.longitude && Number(pData.latitude) !== 0) {
               const loc = {
                 latitude: Number(pData.latitude),
                 longitude: Number(pData.longitude),
@@ -138,9 +210,14 @@ export default function CampusMapPage() {
                     }),
                   }).catch(() => {})
                 },
-                () => {},
+                () => {
+                  // Fallback : Sud de la France (Montpellier / Occitanie)
+                  setUserLocation({ latitude: 43.610769, longitude: 3.876716 })
+                },
                 { enableHighAccuracy: true, timeout: 8000 }
               )
+            } else {
+              setUserLocation({ latitude: 43.610769, longitude: 3.876716 })
             }
           }
         }
@@ -201,19 +278,20 @@ export default function CampusMapPage() {
           setUserLocation({ latitude: lat, longitude: lng })
         }
 
-        // 2. Mettre à jour l'état local du profil
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                school_id: updatedSchool.id,
-                school_name: updatedSchool.name,
-                latitude: lat,
-                longitude: lng,
-                is_visible: true,
-              }
-            : prev
-        )
+        // 2. Mettre à jour l'état local du profil et synchroniser immédiatement
+        const newProfile: Profile = data.profile || {
+          ...(profile || ({} as Profile)),
+          school_id: updatedSchool.id,
+          school_name: updatedSchool.name,
+          is_visible_on_school: true,
+          latitude: lat,
+          longitude: lng,
+        }
+
+        setProfile(newProfile)
+        try {
+          localStorage.setItem('optinote_mock_profile', JSON.stringify(newProfile))
+        } catch {}
 
         // 3. Mettre à jour la liste des camarades affichés sur la carte
         setMapUsers((prev) => {
@@ -253,7 +331,7 @@ export default function CampusMapPage() {
         }
 
         toast.success(
-          `Ton profil est désormais public et visible par les membres du salon de ce lycée ! 🎉 (${updatedSchool.name})`,
+          `🎉 Félicitations ! Le ${updatedSchool.name} est désormais enregistré sur ton profil !`,
           { duration: 6000, icon: '🎓' }
         )
       } else {
@@ -429,19 +507,55 @@ export default function CampusMapPage() {
     }
   }
 
-  const filteredSchools = schools.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.city.toLowerCase().includes(search.toLowerCase()) ||
-      s.postal_code.includes(search)
-  )
+  // Normalisation du texte pour recherche insensible aux accents et à la casse
+  function normalizeText(text: string): string {
+    return (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, ' ')
+      .trim()
+  }
 
-  const filteredStudents = mapUsers.filter(
-    (u) =>
-      (u.full_name && u.full_name.toLowerCase().includes(search.toLowerCase())) ||
-      (u.school_name && u.school_name.toLowerCase().includes(search.toLowerCase())) ||
-      (u.specialties && u.specialties.some((s) => s.toLowerCase().includes(search.toLowerCase())))
-  )
+  function matchSchoolSearch(school: School, searchStr: string): boolean {
+    if (!searchStr || !searchStr.trim()) return true
+    const normSearch = normalizeText(searchStr)
+    const normName = normalizeText(school.name)
+    const normCity = normalizeText(school.city)
+    const normPostal = normalizeText(school.postal_code)
+    const normAcademy = normalizeText(school.academy || '')
+
+    const fullSchoolText = `${normName} ${normCity} ${normPostal} ${normAcademy}`
+
+    if (fullSchoolText.includes(normSearch)) return true
+
+    // Découpage en mots clés : tous les mots significatifs doivent être présents
+    const searchTokens = normSearch.split(/\s+/).filter((t) => t.length >= 2)
+    if (searchTokens.length === 0) return true
+
+    return searchTokens.every((token) => fullSchoolText.includes(token))
+  }
+
+  const filteredSchools = useMemo(() => {
+    const list = schools.filter((s) => matchSchoolSearch(s, search))
+    if (selectedSchool && !list.some((s) => s.id === selectedSchool.id)) {
+      return [selectedSchool, ...list]
+    }
+    return list
+  }, [schools, search, selectedSchool])
+
+  const filteredStudents = mapUsers.filter((u) => {
+    if (u.id === profile?.id || (profile?.email && u.email?.toLowerCase() === profile.email.toLowerCase())) return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase().trim()
+    return (
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.school_name && u.school_name.toLowerCase().includes(q)) ||
+      (u.bio && u.bio.toLowerCase().includes(q)) ||
+      (u.specialties && u.specialties.some((s) => s.toLowerCase().includes(q)))
+    )
+  })
 
   const handleJoinSchool = async (school: School) => {
     if (!isPro) {
@@ -630,10 +744,10 @@ export default function CampusMapPage() {
         </div>
       </div>
 
-      {/* Main Grid : Liste & Carte */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      {/* Main Grid : Liste & Carte (Responsive Mobile : Carte 30-35% en haut, liste fluide en bas) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-5">
         {/* Colonne Gauche : Recherche & Onglets (Lycées / Élèves) */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className="lg:col-span-4 space-y-3 order-2 lg:order-1">
           <div className="bg-surface p-3 rounded-2xl border border-border shadow-2xs space-y-2.5">
             {/* Onglets Lycées / Camarades */}
             <div className="grid grid-cols-2 p-1 bg-surface-secondary rounded-xl border border-border text-xs font-bold">
@@ -792,8 +906,11 @@ export default function CampusMapPage() {
                 {filteredStudents.length === 0 && (
                   <div className="p-6 text-center bg-surface rounded-2xl border border-border space-y-1.5">
                     <Users className="h-6 w-6 text-text-tertiary mx-auto" />
-                    <p className="text-xs text-text-secondary font-medium">
-                      Aucun élève trouvé pour cette recherche.
+                    <p className="text-xs text-text-secondary font-semibold">
+                      {search ? `Aucun élève trouvé pour "${search}".` : 'Aucun autre élève visible sur ce secteur pour le moment.'}
+                    </p>
+                    <p className="text-[10px] text-text-tertiary">
+                      {search ? 'Essaie une autre recherche.' : 'Partage ta position ou invite tes camarades à rejoindre ton lycée !'}
                     </p>
                   </div>
                 )}
@@ -802,8 +919,8 @@ export default function CampusMapPage() {
           </div>
         </div>
 
-        {/* Colonne Droite : Carte Interactive Leaflet */}
-        <div className="lg:col-span-8">
+        {/* Colonne Droite : Carte Interactive Leaflet (Hauteur réduite sur mobile à ~30% viewport) */}
+        <div className="lg:col-span-8 order-1 lg:order-2">
           <SchoolMap
             schools={schools}
             users={mapUsers}
@@ -816,12 +933,14 @@ export default function CampusMapPage() {
             selectedSchoolId={selectedSchool?.id}
             flyToTarget={flyToTarget}
             isCurrentUserVerified={profile?.is_verified}
+            height="h-[30vh] min-h-[200px] max-h-[290px] sm:h-[380px] lg:h-[calc(100vh-190px)] lg:min-h-[500px]"
             onSelectSchool={(school) => {
               setSelectedSchool(school)
               handleJoinSchool(school)
             }}
             onSetUserSchool={handleSetUserSchool}
             onBoundsChange={handleBoundsChange}
+            onLocationFound={(loc) => setUserLocation(loc)}
             onContactStudent={(student) => {
               if (student && student.id) {
                 router.push(
