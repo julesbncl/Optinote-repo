@@ -124,7 +124,6 @@ export async function POST(request: Request) {
       content: moderation.cleanedContent,
       is_flagged: !moderation.isSafe,
       flag_reason: moderation.flagReason || null,
-      moderation_reason: moderation.flagReason || null,
     }
 
     if (channelId) {
