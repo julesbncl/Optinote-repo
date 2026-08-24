@@ -335,6 +335,72 @@ function RecenterButton({
   )
 }
 
+// Composant pour synchroniser les changements de zone géographique (Bounds / Bbox)
+// Défini au niveau module (pas à l'intérieur de SchoolMapClient) pour que React conserve
+// la même identité de composant entre les rendus, au lieu de le démonter/remonter à chaque fois.
+function MapBoundsWatcher({
+  onBoundsChange,
+}: {
+  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!onBoundsChange) return
+
+    function handleMapMove() {
+      const bounds = map.getBounds()
+      onBoundsChange?.({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      })
+    }
+
+    handleMapMove()
+    map.on('moveend', handleMapMove)
+    map.on('zoomend', handleMapMove)
+
+    return () => {
+      map.off('moveend', handleMapMove)
+      map.off('zoomend', handleMapMove)
+    }
+  }, [map, onBoundsChange])
+
+  return null
+}
+
+// Contrôleur de centrage fluide (FlyTo) : déclenché UNIQUEMENT lors d'une action explicite (sélection de recherche ou clic cible)
+function FlyToController({
+  target,
+}: {
+  target?: { latitude: number; longitude: number; zoom?: number } | null
+}) {
+  const map = useMap()
+  const lastTargetRef = useRef<{ latitude: number; longitude: number; zoom?: number } | null>(null)
+
+  useEffect(() => {
+    if (target) {
+      const isDifferent =
+        !lastTargetRef.current ||
+        lastTargetRef.current.latitude !== target.latitude ||
+        lastTargetRef.current.longitude !== target.longitude ||
+        lastTargetRef.current.zoom !== target.zoom
+
+      if (isDifferent) {
+        lastTargetRef.current = target
+        map.flyTo([target.latitude, target.longitude], target.zoom || 14, {
+          duration: 1.4,
+          easeLinearity: 0.25,
+        })
+      }
+    }
+  }, [target, map])
+
+  return null
+}
+
 interface SchoolMapClientProps {
   schools: School[]
   users?: Partial<Profile>[]
@@ -391,22 +457,10 @@ export default function SchoolMapClient({
   // Hauteur responsive : 30-35% max de l'écran sur mobile pour laisser la place aux infos
   const containerHeight = height || 'h-[32vh] min-h-[220px] max-h-[300px] sm:h-[400px] lg:h-[520px]'
 
-  if (!mounted) {
-    return (
-      <div className={`${containerHeight} w-full rounded-3xl bg-surface-secondary flex flex-col items-center justify-center border border-border gap-2 text-text-tertiary animate-pulse`}>
-        <div className="h-8 w-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
-        <span className="text-xs font-semibold">Chargement de la carte interactive...</span>
-      </div>
-    )
-  }
-
-  // Coordonnées de centrage par défaut : Position utilisateur ou Sud de la France (Occitanie/PACA ~43.61, 3.88)
-  const defaultCenter: [number, number] =
-    propDefaultCenter ||
-    (userLocation ? [userLocation.latitude, userLocation.longitude] : [43.610769, 3.876716])
-  const defaultZoom: number = propDefaultZoom ?? (userLocation ? 10.0 : 7.0)
-
   // Déduplication stricte des lycées par ID et coordonnées/nom
+  // IMPORTANT : ce hook doit rester appelé avant tout `return` conditionnel (Rules of Hooks),
+  // sinon React voit un nombre de hooks différent entre le rendu "chargement" et le rendu réel
+  // (erreur React #310 : "Rendered more hooks than during the previous render").
   const uniqueSchools = useMemo(() => {
     const list: School[] = []
     const seenKeys = new Set<string>()
@@ -425,6 +479,21 @@ export default function SchoolMapClient({
     return list
   }, [schools])
 
+  if (!mounted) {
+    return (
+      <div className={`${containerHeight} w-full rounded-3xl bg-surface-secondary flex flex-col items-center justify-center border border-border gap-2 text-text-tertiary animate-pulse`}>
+        <div className="h-8 w-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
+        <span className="text-xs font-semibold">Chargement de la carte interactive...</span>
+      </div>
+    )
+  }
+
+  // Coordonnées de centrage par défaut : Position utilisateur ou Sud de la France (Occitanie/PACA ~43.61, 3.88)
+  const defaultCenter: [number, number] =
+    propDefaultCenter ||
+    (userLocation ? [userLocation.latitude, userLocation.longitude] : [43.610769, 3.876716])
+  const defaultZoom: number = propDefaultZoom ?? (userLocation ? 10.0 : 7.0)
+
   const currentSelectedSchool = uniqueSchools.find((s: School) => s.id === selectedSchoolId)
   const isSelectedUserSchool = Boolean(
     currentSelectedSchool &&
@@ -433,66 +502,6 @@ export default function SchoolMapClient({
           userSchoolName.toLowerCase().trim() ===
             currentSelectedSchool.name.toLowerCase().trim()))
   )
-
-  // Composant interne pour synchroniser les changements de zone géographique (Bounds / Bbox)
-  function MapBoundsWatcher() {
-    const map = useMap()
-
-    useEffect(() => {
-      if (!onBoundsChange) return
-
-      function handleMapMove() {
-        const bounds = map.getBounds()
-        onBoundsChange?.({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        })
-      }
-
-      handleMapMove()
-      map.on('moveend', handleMapMove)
-      map.on('zoomend', handleMapMove)
-
-      return () => {
-        map.off('moveend', handleMapMove)
-        map.off('zoomend', handleMapMove)
-      }
-    }, [map])
-
-    return null
-  }
-
-  // Contrôleur de centrage fluide (FlyTo) : déclenché UNIQUEMENT lors d'une action explicite (sélection de recherche ou clic cible)
-  function FlyToController({
-    target,
-  }: {
-    target?: { latitude: number; longitude: number; zoom?: number } | null
-  }) {
-    const map = useMap()
-    const lastTargetRef = useRef<{ latitude: number; longitude: number; zoom?: number } | null>(null)
-
-    useEffect(() => {
-      if (target) {
-        const isDifferent =
-          !lastTargetRef.current ||
-          lastTargetRef.current.latitude !== target.latitude ||
-          lastTargetRef.current.longitude !== target.longitude ||
-          lastTargetRef.current.zoom !== target.zoom
-
-        if (isDifferent) {
-          lastTargetRef.current = target
-          map.flyTo([target.latitude, target.longitude], target.zoom || 14, {
-            duration: 1.4,
-            easeLinearity: 0.25,
-          })
-        }
-      }
-    }, [target, map])
-
-    return null
-  }
 
   // Déterminer la position active de l'utilisateur connecté avec fallback garanti (Sud de la France / Lycée)
   const safeUserLoc =
@@ -523,7 +532,7 @@ export default function SchoolMapClient({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapBoundsWatcher />
+        <MapBoundsWatcher onBoundsChange={onBoundsChange} />
         <FlyToController target={flyToTarget || null} />
         <RecenterButton userLocation={effectiveUserLocation} onLocationFound={onLocationFound} />
 
