@@ -78,7 +78,7 @@ export function DashboardPlanningGrid({
   const [selectedMobileDay, setSelectedMobileDay] = useState<number>(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  const planSlots = (schedule?.generated_plan as Array<any>) || DEFAULT_PLAN_SLOTS
+  const planSlots = Array.isArray(schedule?.generated_plan) ? schedule.generated_plan : DEFAULT_PLAN_SLOTS
 
   const dailyTasks = planSlots.filter((s) => s.day === selectedMobileDay)
   const studyTasksCount = dailyTasks.filter((s) => s.type === 'study').length
