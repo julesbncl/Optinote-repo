@@ -32,7 +32,7 @@ const DEFAULT_FOLDERS: FolderType[] = [
   { id: 'f-6', user_id: 'mock', name: 'SES', parent_id: null, position: 5, created_at: new Date().toISOString() },
 ]
 
-// Générateur de révision structuré en 4 parties avec nettoyage mathématique complet
+// Générateur de révision structuré en 4 parties avec focus exclusif sur le texte
 function generateLocalRevisionSheet(rawText: string, titleHint?: string, subjectHint?: string) {
   const cleanedText = cleanMathNotation(rawText)
   const rawLines = cleanedText
@@ -51,7 +51,7 @@ function generateLocalRevisionSheet(rawText: string, titleHint?: string, subject
     extractedTitle = subjectHint ? `Synthèse : ${subjectHint}` : 'Fiche de Révision'
   }
 
-  // 2. Extraction des concepts clés (mots en gras, formules ou notions de tête)
+  // 2. Extraction des concepts clés (termes en gras, symboles ou notions)
   const boldMatches = cleanedText.match(/\*\*([^*]+)\*\*/g)?.map((m) => m.replace(/\*\*/g, '').trim()) || []
   const mathMatches = cleanedText.match(/(?:[Δα-ωΩ∈≤≥≠≈±×·∑∫ℝℕℤℚℂ√]|(?:\b[a-zA-Z]+\s*=\s*[^,\n]+))/g) || []
   const concepts = Array.from(
@@ -65,11 +65,11 @@ function generateLocalRevisionSheet(rawText: string, titleHint?: string, subject
     .slice(0, 5)
 
   if (concepts.length === 0) {
-    concepts.push('Définitions', 'Formules Essentielles', 'Méthode Bac')
+    concepts.push(subjectHint || 'Notion Fondamentale', 'Définitions du Texte', 'Propriétés Clés')
   }
 
-  // 3. Découpage et structuration en 4 parties claires et aérées
-  const summary = rawLines.slice(0, 3).join(' ').slice(0, 220) || `Synthèse complète des notions indispensables de ${extractedTitle}.`
+  // 3. Découpage et structuration en 4 parties axées 100% sur le texte
+  const summary = rawLines.slice(0, 3).join(' ').slice(0, 220) || `Synthèse des notions et données du document ${extractedTitle}.`
 
   // Formatage des lignes du cours avec puces propres
   const formattedBody = rawLines
@@ -80,28 +80,23 @@ function generateLocalRevisionSheet(rawText: string, titleHint?: string, subject
     })
     .join('\n')
 
-  const content = `## 1. 📌 Définition & Concept Fondamental
-- **Contexte & Enjeux** : ${summary}
-- **Vocabulaire clé** : Maîtriser le sens exact des termes et les hypothèses de départ.
+  const content = `## 1. 📌 Résumé des Points Clés
+${summary}
 
 ---
 
-## 2. ⚡ Propriétés, Règles & Formules Clés
+## 2. 🔑 Définitions & Notions Fondamentales du Texte
+${rawLines.slice(0, 4).map((l) => `- **Point clé** : ${l}`).join('\n')}
+
+---
+
+## 3. ⚡ Formules, Propriétés & Données Clés
 ${formattedBody}
 
 ---
 
-## 3. 📝 Exemple d'Application & Méthode Pas-à-Pas
-- **Étape 1 (Identification)** : Repérer les données de l'énoncé et identifier la formule ou le théorème adéquat.
-- **Étape 2 (Rédaction)** : Énoncer clairement la propriété utilisée avant d'appliquer les valeurs numériques.
-- **Étape 3 (Calcul & Conclusion)** : Détailler les étapes de calcul, vérifier l'homogénéité du résultat et encadrer la réponse finale.
-
----
-
-## 4. ⚠️ Pièges à Éviter & Astuces Bac
-- **Conditions de validité** : Toujours vérifier que les conditions d'application d'une formule sont satisfaites.
-- **Unités & Rigueur** : Vérifier la cohérence des unités et ne pas oublier les constantes ou signes négatifs.
-- **Auto-contrôle** : Relire pour vérifier le bon ordre de grandeur et la clarté de la démonstration.`
+## 4. 🎯 Points Essentiels & Distinctions à Retenir
+- Maîtriser l'ensemble des définitions et notions extraites du document ci-dessus.`
 
   return {
     title: extractedTitle,
@@ -111,12 +106,12 @@ ${formattedBody}
     content,
     flashcards: [
       {
-        question: `Quelle est la définition ou formule centrale de ${extractedTitle} ?`,
+        question: `Quelle est la notion centrale de ${extractedTitle} ?`,
         answer: summary.slice(0, 160),
       },
       {
-        question: `Quels sont les réflexes indispensables lors de l'application de ce cours ?`,
-        answer: `Vérifier les hypothèses de validité, justifier chaque étape de calcul et soigner la rédaction.`,
+        question: `Quels sont les points clés définis dans ce texte ?`,
+        answer: rawLines.slice(0, 2).join(' ').slice(0, 160) || 'Définitions et notions issues du document.',
       },
     ],
   }
@@ -153,43 +148,30 @@ export default function NewRevisionPage() {
             .from('folders')
             .select('*')
             .eq('user_id', user.id)
-            .order('name')
+            .order('position', { ascending: true })
 
           if (data && data.length > 0) {
             setFolders(data)
             return
-          } else {
-            // Seed default folders in Supabase so they have valid UUIDs
-            const toInsert = DEFAULT_FOLDERS.map((f, i) => ({
-              user_id: user.id,
-              name: f.name,
-              position: i,
-            }))
-            const { data: seeded } = await supabase.from('folders').insert(toInsert).select('*')
-            if (seeded && seeded.length > 0) {
-              setFolders(seeded)
-              return
-            }
           }
         }
+      } catch {}
 
-        const local = localStorage.getItem('optinote_folders')
-        if (local) {
+      // Fallback local
+      const local = localStorage.getItem('optinote_folders')
+      if (local) {
+        try {
           const parsed = JSON.parse(local)
-          if (parsed && parsed.length > 0) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setFolders(parsed)
-            return
           }
-        }
-        setFolders(DEFAULT_FOLDERS)
-      } catch {
-        setFolders(DEFAULT_FOLDERS)
+        } catch {}
       }
     }
     loadFolders()
   }, [supabase])
 
-  async function handleCreateFolder(e: React.FormEvent) {
+  async function handleCreateFolder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!newFolderName.trim()) return
 
@@ -245,7 +227,7 @@ export default function NewRevisionPage() {
     setErrorMessage(null)
 
     try {
-      // 1. Quota Check for Free Tier (max 1 sheet)
+      // 1. Quota Check
       try {
         const {
           data: { user },
@@ -274,7 +256,7 @@ export default function NewRevisionPage() {
         console.warn('Quota check bypassed:', quotaErr)
       }
 
-      // 2. Read and Sanitize Form Values directly from React State (Zero FormData)
+      // 2. Read and Sanitize Form Values
       const inputTitle = sheetTitle.trim()
       const subject = sheetSubject.trim() || selectedFolderName.trim() || 'Général'
       let folderId = selectedFolderId
@@ -284,10 +266,29 @@ export default function NewRevisionPage() {
         throw new Error('Veuillez saisir ou coller le contenu de votre cours.')
       }
 
-      toast.loading('Génération & structuration pédagogique de la fiche...', { id: 'gen-toast' })
+      toast.loading('Génération & synthèse du cours...', { id: 'gen-toast' })
 
-      // 3. Direct Robust Formatting & Structuring (0 API stall)
-      const resultData = generateLocalRevisionSheet(rawText, inputTitle, subject)
+      // 3. Appel de l'IA de révision (OpenAI) avec fallback local
+      let resultData: any = null
+      try {
+        const aiRes = await fetch('/api/ai/generate-revision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: rawText,
+            subjectHint: subject,
+          }),
+        })
+        if (aiRes.ok) {
+          resultData = await aiRes.json()
+        }
+      } catch (aiErr) {
+        console.warn('API generate-revision failed, using local extractor:', aiErr)
+      }
+
+      if (!resultData || !resultData.content) {
+        resultData = generateLocalRevisionSheet(rawText, inputTitle, subject)
+      }
       const finalTitle = resultData.title || inputTitle || 'Fiche de Révision'
 
       // 4. Resolve folder ID in Supabase or Local
@@ -300,7 +301,6 @@ export default function NewRevisionPage() {
         const isUuid = folderId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(folderId) : false
 
         if (!isUuid) {
-          // Check if folder with targetFolderName exists in Supabase
           const { data: existingFolder } = await supabase
             .from('folders')
             .select('id')
@@ -311,7 +311,6 @@ export default function NewRevisionPage() {
           if (existingFolder) {
             folderId = existingFolder.id
           } else {
-            // Create folder in Supabase so it has a real UUID
             const { data: newFolder } = await supabase
               .from('folders')
               .insert({

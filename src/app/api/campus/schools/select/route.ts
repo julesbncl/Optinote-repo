@@ -60,21 +60,26 @@ export async function POST(request: NextRequest) {
           .select()
           .single()
 
-        if (!schoolErr && newSchool) {
+        if (schoolErr) {
+          console.error('Error inserting new school:', schoolErr)
+        } else if (newSchool) {
           dbSchool = newSchool
           schoolId = newSchool.id
         }
       }
     } catch (e) {
-      console.warn('Schools table lookup/insert note:', e)
+      console.error('Schools table lookup/insert error:', e)
     }
 
+    // profiles.school_id est une colonne UUID avec une clé étrangère vers
+    // schools.id : impossible d'y mettre un id de secours non-UUID (ex: id de
+    // l'API Open Data, ou un id généré ici) sans casser la mise à jour du
+    // profil. Le lycée doit réellement exister dans public.schools.
     if (!dbSchool) {
-      schoolId = school.id || `sch-${Date.now()}`
-      dbSchool = {
-        ...school,
-        id: schoolId,
-      }
+      return NextResponse.json(
+        { error: 'Impossible d’enregistrer ce lycée pour le moment. Réessaie dans un instant.' },
+        { status: 500 }
+      )
     }
 
     // 2. Mettre à jour le profil de l'utilisateur connecté dans Supabase (school_name, school_id, preferences)

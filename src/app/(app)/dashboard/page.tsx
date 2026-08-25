@@ -184,6 +184,9 @@ export default function DashboardPage() {
           icon: '🎓',
           duration: 4500,
         })
+      } else {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’association au lycée.')
       }
     } catch (err) {
       console.error(err)

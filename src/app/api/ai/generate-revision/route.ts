@@ -122,22 +122,36 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Intelligent Fallback
+    // 6. Intelligent Fallback (strict extraction from text)
+    const rawLines = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+    const firstLine = rawLines[0] || ''
+    const fallbackTitle = subjectHint ? `Synthèse : ${subjectHint}` : firstLine.replace(/^[#*-\d.]+\s*/, '').slice(0, 60) || 'Fiche de Révision'
+    const fallbackSummary = rawLines.slice(0, 3).join(' ').slice(0, 220) || 'Synthèse des notions et données du document.'
+
     const fallbackSheet = {
-      title: subjectHint ? `Synthèse : ${subjectHint}` : 'Fiche de Révision Synthétique',
+      title: fallbackTitle,
       subject: subjectHint || 'Général',
-      summary: 'Fiche condensée des définitions fondamentales, théorèmes clés et méthodes indispensables pour réussir les évaluations.',
+      summary: fallbackSummary,
       keyConcepts: [
-        'Définitions & Notations Fondamentales',
-        'Théorèmes & Propriétés Essentielles',
-        'Méthode & Réflexes pour les DS',
-        'Erreurs Fréquentes à Éviter',
+        subjectHint || 'Notion Fondamentale',
+        'Définitions du Texte',
+        'Propriétés Clés',
+        'Points Essentiels',
       ],
-      content: `## 1. 📌 Résumé Express & Contexte\nSynthèse des points clés et formules :\n${text.slice(0, 400)}\n\n---\n\n## 2. 🔑 Définitions & Formules Clés\n- **Notion principale** : Comprendre la structure du calcul et le domaine de validité.\n- **Application directe** : Identifier les hypothèses de départ et appliquer la formule avec rigueur.\n\n---\n\n## 3. 🎯 Points Essentiels & Pièges au Bac\n- Vérifier la cohérence des unités et des signes.\n- Toujours encadrer le résultat final et expliciter les étapes intermédiaires.`,
+      content: `## 1. 📌 Résumé des Points Clés\n${fallbackSummary}\n\n---\n\n## 2. 🔑 Définitions & Notions Fondamentales du Texte\n${rawLines.slice(0, 4).map((l) => `- **Point clé** : ${l}`).join('\n')}\n\n---\n\n## 3. ⚡ Formules, Propriétés & Données Clés\n${rawLines.slice(4, 8).map((l) => `- ${l}`).join('\n') || '- Données et propriétés extraites du cours.'}\n\n---\n\n## 4. 🎯 Points Essentiels & Distinctions à Retenir\n- Maîtriser les définitions et propriétés énoncées ci-dessus.`,
       flashcards: [
-        { question: 'Quel est l’objectif principal de cette notion ?', answer: 'Maîtriser les définitions et savoir appliquer les formules en évaluation.' },
-        { question: 'Quel est le premier réflexe méthodologique ?', answer: 'Vérifier les conditions d’application avant de démarrer les calculs.' }
-      ]
+        {
+          question: `Quelle est la notion centrale de ${fallbackTitle} ?`,
+          answer: fallbackSummary.slice(0, 160),
+        },
+        {
+          question: `Quels sont les points clés définis dans ce texte ?`,
+          answer: rawLines.slice(0, 2).join(' ').slice(0, 160) || 'Définitions et propriétés du document.',
+        },
+      ],
     }
 
     return NextResponse.json(fallbackSheet)
