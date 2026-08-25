@@ -494,15 +494,6 @@ export default function SchoolMapClient({
     (userLocation ? [userLocation.latitude, userLocation.longitude] : [43.610769, 3.876716])
   const defaultZoom: number = propDefaultZoom ?? (userLocation ? 10.0 : 7.0)
 
-  const currentSelectedSchool = uniqueSchools.find((s: School) => s.id === selectedSchoolId)
-  const isSelectedUserSchool = Boolean(
-    currentSelectedSchool &&
-      ((userSchoolId && userSchoolId === currentSelectedSchool.id) ||
-        (userSchoolName &&
-          userSchoolName.toLowerCase().trim() ===
-            currentSelectedSchool.name.toLowerCase().trim()))
-  )
-
   // Déterminer la position active de l'utilisateur connecté avec fallback garanti (Sud de la France / Lycée)
   const safeUserLoc =
     userLocation && !isNaN(Number(userLocation.latitude)) && !isNaN(Number(userLocation.longitude))
