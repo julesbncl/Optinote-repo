@@ -25,8 +25,9 @@ export interface Profile {
   subscription_status?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | 'inactive'
   is_pro?: boolean
   is_verified?: boolean
-  id_card_url?: string | null
+  school_certificate_url?: string | null
   verification_status?: 'none' | 'pending' | 'verified' | 'rejected'
+  verification_note?: string | null
   subscription_current_period_end?: string | null
   preferences: Record<string, unknown>
   created_at: string

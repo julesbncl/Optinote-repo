@@ -183,8 +183,13 @@ export function FriendsList({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-text-primary truncate">
-                      {friend.full_name}
+                    <p className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
+                      <span>{friend.full_name}</span>
+                      {(friend as any).is_verified && (
+                        <span className="text-[9px]" title="Lycéen Vérifié 🛡️">
+                          🛡️
+                        </span>
+                      )}
                     </p>
                     <p className="text-[10px] text-text-tertiary truncate">
                       {friend.school_name || 'Lycée'} • {friend.class_level || 'Lycéen'}

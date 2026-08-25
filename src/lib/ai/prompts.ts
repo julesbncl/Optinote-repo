@@ -195,4 +195,27 @@ Règles impératives d'extraction :
    - La cantine / pause méridienne ("Repas", "Cantine", "Déjeuner", "Pause midi", etc.)
    - Les heures de permanence / étude libre ("Permanence", "Étude", "Autonomie", "Libre").
 7. Ne renvoie AUCUN texte en dehors de l'objet JSON strict.`,
+
+  // 7. Vérification de Certificat de Scolarité (Badge Lycéen Vérifié)
+  verifySchoolCertificate: (declaredName: string, declaredSchool: string | null) =>
+    `Tu es l'assistant de vérification d'identité scolaire d'OptiNote. Analyse ce document et détermine s'il s'agit bien d'un certificat de scolarité français authentique.
+
+Informations déclarées par l'utilisateur (à comparer avec le document) :
+- Nom déclaré : "${declaredName}"
+- Établissement déclaré : "${declaredSchool || 'non renseigné'}"
+
+Un certificat de scolarité authentique mentionne généralement : le nom et prénom de l'élève, le nom et l'adresse de l'établissement, l'année scolaire en cours, la classe/niveau, et le cachet ou la signature de l'administration.
+
+Réponds EXCLUSIVEMENT avec un objet JSON strict :
+{
+  "isSchoolCertificate": true ou false (est-ce bien un certificat de scolarité, et pas un autre document comme une carte d'identité, un passeport, un bulletin de notes ou une photo sans rapport),
+  "extractedName": "Nom complet lu sur le document, ou null si illisible",
+  "extractedSchool": "Nom de l'établissement lu sur le document, ou null si illisible",
+  "nameMatches": true ou false (le nom lu correspond-il raisonnablement au nom déclaré, en tolérant les variations d'ordre/accents/casse),
+  "schoolMatches": true ou false (l'établissement lu correspond-il raisonnablement à celui déclaré, ou true si aucun établissement n'était déclaré),
+  "confidence": "high", "medium" ou "low" (ta confiance globale dans cette analyse),
+  "reason": "Explication courte en une phrase, notamment si quelque chose ne correspond pas ou est illisible"
+}
+
+Sois strict sur la nature du document mais raisonnable sur les correspondances de texte (OCR imparfait, accents, abréviations). Ne renvoie AUCUN texte en dehors de l'objet JSON strict.`,
 }

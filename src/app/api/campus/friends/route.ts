@@ -48,7 +48,7 @@ export async function GET() {
     if (acceptedFriendIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, school_name, class_level, specialties, bio')
+        .select('id, full_name, avatar_url, school_name, class_level, specialties, bio, is_verified')
         .in('id', acceptedFriendIds)
       friendsProfiles = profiles || []
     }
@@ -64,7 +64,7 @@ export async function GET() {
     if (otherPartyIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, school_name, class_level, specialties')
+        .select('id, full_name, avatar_url, school_name, class_level, specialties, is_verified')
         .in('id', otherPartyIds)
       otherPartyProfiles = Object.fromEntries((profiles || []).map((p) => [p.id, p]))
     }

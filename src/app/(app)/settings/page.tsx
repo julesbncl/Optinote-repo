@@ -25,7 +25,6 @@ import {
   FileText,
   BadgeCheck,
   Clock,
-  Sparkles,
   RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -67,12 +66,12 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [uploadingIdCard, setUploadingIdCard] = useState(false)
+  const [uploadingCertificate, setUploadingCertificate] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const idCardInputRef = useRef<HTMLInputElement>(null)
+  const certificateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     async function load() {
@@ -205,8 +204,9 @@ export default function SettingsPage() {
     }
   }
 
-  // 1b. Upload de la carte de lycéen / pièce d'identité vers Supabase Storage
-  async function handleIdCardUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // 1b. Upload du certificat de scolarité vers Supabase Storage (bucket privé) puis
+  // analyse automatique par IA Vision pour valider/mettre en attente le badge.
+  async function handleCertificateUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -215,113 +215,84 @@ export default function SettingsPage() {
       return
     }
 
-    setUploadingIdCard(true)
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      let finalUrl: string | null = null
-
-      if (user) {
-        const fileExt = file.name.split('.').pop() || 'jpg'
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`
-
-        const { error: uploadErr } = await supabase.storage
-          .from('id-documents')
-          .upload(filePath, file, { upsert: true })
-
-        if (!uploadErr) {
-          const { data } = supabase.storage.from('id-documents').getPublicUrl(filePath)
-          finalUrl = data.publicUrl
-        }
-      }
-
-      if (!finalUrl) {
-        finalUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.readAsDataURL(file)
-        })
-      }
-
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({
-            id_card_url: finalUrl,
-            verification_status: 'pending',
-            is_verified: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id)
-      }
-
-      setProfile((prev) => {
-        const updated: Profile = {
-          ...prev,
-          id_card_url: finalUrl,
-          verification_status: 'pending',
-          is_verified: false,
-        }
-        localStorage.setItem('optinote_mock_profile', JSON.stringify(updated))
-        return updated
-      })
-
-      toast.success(
-        'Document d’identité transmis ! Vérification de l’âge (< 19 ans) et du statut lycéen en cours ⏳',
-        { duration: 5500, icon: '🛡️' }
-      )
-    } catch (err) {
-      console.error('Error uploading ID card:', err)
-      toast.error('Erreur lors du transfert du document d’identité.')
-    } finally {
-      setUploadingIdCard(false)
+    const allowedExt = ['jpg', 'jpeg', 'png', 'pdf']
+    const fileExt = (file.name.split('.').pop() || '').toLowerCase()
+    if (!allowedExt.includes(fileExt)) {
+      toast.error('Format non supporté. Utilise un PDF, JPG ou PNG.')
+      return
     }
-  }
 
-  // 1c. Simulation / Validation instantanée pour démonstration
-  async function handleToggleVerification(targetStatus: 'verified' | 'none') {
-    const isNowVerified = targetStatus === 'verified'
-    const newStatus = isNowVerified ? 'verified' : 'none'
-
+    setUploadingCertificate(true)
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({
-            is_verified: isNowVerified,
-            verification_status: newStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id)
+      if (!user) {
+        toast.error('Tu dois être connecté pour transmettre ton certificat.')
+        return
       }
 
-      setProfile((prev) => {
-        const updated: Profile = {
-          ...prev,
-          is_verified: isNowVerified,
-          verification_status: newStatus,
-        }
-        localStorage.setItem('optinote_mock_profile', JSON.stringify(updated))
-        return updated
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadErr } = await supabase.storage
+        .from('school-certificates')
+        .upload(filePath, file, { upsert: true, contentType: file.type })
+
+      if (uploadErr) {
+        console.error('Error uploading certificate:', uploadErr)
+        toast.error('Erreur lors du transfert du certificat.')
+        return
+      }
+
+      toast.loading('Analyse de ton certificat de scolarité en cours...', { id: 'cert-analysis' })
+
+      const res = await fetch('/api/verification/analyze-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath }),
       })
 
-      if (isNowVerified) {
-        toast.success('Félicitations ! Ton compte est désormais Lycéen Certifié 🛡️ ✨', {
+      toast.dismiss('cert-analysis')
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de la vérification du certificat.')
+        return
+      }
+
+      const result = await res.json()
+
+      setProfile((prev) => ({
+        ...prev,
+        school_certificate_url: filePath,
+        verification_status: result.status,
+        is_verified: result.isVerified,
+        verification_note: result.note,
+      }))
+
+      if (result.status === 'verified') {
+        toast.success('Félicitations ! Ton compte est désormais Lycéen Vérifié 🛡️ ✨', {
           icon: '🎓',
           duration: 4500,
         })
+      } else if (result.status === 'rejected') {
+        toast.error(
+          result.note ||
+            'Ce document ne semble pas être un certificat de scolarité valide. Réessaie avec le bon document.',
+          { duration: 6000 }
+        )
       } else {
-        toast('Statut de vérification réinitialisé.')
+        toast.success(
+          'Certificat transmis ! Vérification en cours par nos équipes ⏳',
+          { duration: 5000, icon: '🛡️' }
+        )
       }
     } catch (err) {
-      console.error(err)
-      toast.error('Erreur lors de la mise à jour.')
+      console.error('Error verifying certificate:', err)
+      toast.error('Erreur lors du transfert du certificat de scolarité.')
+    } finally {
+      setUploadingCertificate(false)
     }
   }
 
@@ -683,24 +654,28 @@ export default function SettingsPage() {
       </Card>
 
       {/* ═══════════════════════════════════════════════════════
-          2. VÉRIFICATION DU COMPTE & BADGE LYCÉEN CERTIFIÉ 🛡️
+          2. VÉRIFICATION DU COMPTE & BADGE LYCÉEN VÉRIFIÉ 🛡️
           ═══════════════════════════════════════════════════════ */}
       <Card className="p-2.5 sm:p-3 space-y-2.5 shadow-2xs">
         <div className="border-b border-border pb-1 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-primary-600" />
             <h2 className="text-xs sm:text-sm font-bold text-text-primary">
-              Vérification du Compte & Badge Lycéen 🛡️
+              Vérification du Compte & Badge Lycéen Vérifié 🛡️
             </h2>
           </div>
           {profile?.is_verified ? (
             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
-              <span>Lycéen Certifié</span>
+              <span>Lycéen Vérifié</span>
               <Check className="h-2.5 w-2.5" />
             </span>
           ) : profile?.verification_status === 'pending' ? (
             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-0.5">
               <span>Vérification en cours ⏳</span>
+            </span>
+          ) : profile?.verification_status === 'rejected' ? (
+            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex items-center gap-0.5">
+              <span>Document non valide</span>
             </span>
           ) : (
             <span className="text-[9px] font-bold text-text-tertiary">
@@ -718,26 +693,17 @@ export default function SettingsPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-black text-emerald-950 flex items-center gap-1">
-                  <span>Compte Lycéen Certifié & Validé (-19 ans)</span>
+                  <span>Compte Lycéen Vérifié</span>
                   <BadgeCheck className="h-4 w-4 text-emerald-600 inline" />
                 </p>
                 <p className="text-[10px] text-emerald-800 leading-snug">
-                  Ton statut d&apos;élève et ton âge ont été validés. Le badge officiel protège ton compte et apparaît sur ton profil et sur la carte interactive.
+                  Ton certificat de scolarité a été validé. Le badge officiel apparaît sur ton profil, sur la carte du Campus et dans la liste des élèves connectés.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-emerald-200/70 text-[9.5px]">
-              <span className="text-emerald-700 font-semibold">
-                Justificatif officiel validé (Passeport / Carte d’identité / Carte de lycéen) ✓
-              </span>
-              <button
-                type="button"
-                onClick={() => handleToggleVerification('none')}
-                className="text-emerald-700 hover:text-emerald-800 underline font-bold cursor-pointer"
-              >
-                Réinitialiser
-              </button>
+            <div className="pt-1 border-t border-emerald-200/70 text-[9.5px] text-emerald-700 font-semibold">
+              Certificat de scolarité validé ✓
             </div>
           </div>
         ) : profile?.verification_status === 'pending' ? (
@@ -748,65 +714,90 @@ export default function SettingsPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-black text-amber-950">
-                  Vérification en cours par nos équipes ⏳
+                  Vérification en cours ⏳
                 </p>
                 <p className="text-[10px] text-amber-800 leading-snug">
-                  Ton justificatif a été reçu. Notre système vérifie ta date de naissance (&lt; 19 ans) et ton établissement sous 24h ouvrées.
+                  {profile?.verification_note ||
+                    'Ton certificat de scolarité a été reçu et est en cours de vérification par nos équipes.'}
                 </p>
               </div>
             </div>
+          </div>
+        ) : profile?.verification_status === 'rejected' ? (
+          <div className="space-y-2.5">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-red-50/80 via-rose-50/50 to-red-50/80 border border-red-200 space-y-2">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-red-500 text-white flex items-center justify-center font-black text-sm shadow-xs flex-shrink-0">
+                  ✕
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-red-950">
+                    Document non reconnu comme certificat de scolarité
+                  </p>
+                  <p className="text-[10px] text-red-800 leading-snug">
+                    {profile?.verification_note ||
+                      'Le document transmis ne semble pas être un certificat de scolarité valide.'}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-amber-200/70">
-              <span className="text-[9.5px] text-amber-700 font-semibold">
-                Contrôle d&apos;âge &amp; de scolarité en cours
-              </span>
-              <button
-                type="button"
-                onClick={() => handleToggleVerification('verified')}
-                className="inline-flex items-center gap-1 text-[9.5px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2 py-0.5 rounded-lg shadow-2xs transition-all cursor-pointer"
-                title="Valider immédiatement (Mode Démo)"
-              >
-                <Sparkles className="h-2.5 w-2.5" />
-                <span>Valider le compte (Démo)</span>
-              </button>
+            <input
+              type="file"
+              ref={certificateInputRef}
+              onChange={handleCertificateUpload}
+              accept="image/jpeg,image/png,application/pdf"
+              className="hidden"
+            />
+            <div
+              onClick={() => certificateInputRef.current?.click()}
+              className="border-2 border-dashed border-primary-300 hover:border-primary-500 bg-primary-50/40 hover:bg-primary-50/70 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+            >
+              {uploadingCertificate ? (
+                <div className="flex items-center gap-2 text-primary-700 text-xs font-bold">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Téléchargement sécurisé en cours...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="h-7 w-7 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                    <Upload className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs font-bold text-primary-900 leading-snug">
+                    Réessayer avec ton certificat de scolarité
+                  </p>
+                  <p className="text-[9.5px] text-text-tertiary mt-0.5">
+                    Formats acceptés : PDF, JPG ou PNG (Max 8 Mo)
+                  </p>
+                </>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-2.5">
-            {/* Note de Sécurité & Protection des Mineurs */}
-            <div className="p-2 sm:p-2.5 bg-blue-50/70 rounded-xl border border-blue-200/90 text-blue-900 space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-[10.5px] text-blue-950">
-                <ShieldCheck className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                <span>Espace 100% sécurisé réservé aux lycéens (Moins de 19 ans)</span>
-              </div>
-              <p className="text-[9.5px] sm:text-[10px] text-blue-800 leading-relaxed">
-                Afin de garantir un environnement d&apos;entraide sécurisé, bienveillant et strictement réservé aux élèves, la date de naissance sur ton document d&apos;identité doit prouver que tu as <strong className="text-blue-950 font-bold">moins de 19 ans</strong> (couvrant l&apos;ensemble du cursus jusqu&apos;à la fin de Terminale).
-              </p>
-            </div>
-
             <div className="p-2.5 rounded-2xl bg-surface-secondary/60 border border-border space-y-2">
               <div>
                 <p className="text-[10.5px] text-text-primary font-bold">
-                  Pièces d&apos;identité officielles acceptées :
+                  Obtiens ton badge Lycéen Vérifié 🛡️
                 </p>
                 <p className="text-[10px] text-text-secondary">
-                  <strong>Passeport, carte d&apos;identité ou carte d&apos;étudiant/lycéen</strong>.
+                  Dépose ton <strong>certificat de scolarité de l&apos;année en cours</strong> pour confirmer ton statut d&apos;élève.
                 </p>
               </div>
 
               <input
                 type="file"
-                ref={idCardInputRef}
-                onChange={handleIdCardUpload}
-                accept="image/*,application/pdf"
+                ref={certificateInputRef}
+                onChange={handleCertificateUpload}
+                accept="image/jpeg,image/png,application/pdf"
                 className="hidden"
               />
 
               <div
-                onClick={() => idCardInputRef.current?.click()}
+                onClick={() => certificateInputRef.current?.click()}
                 className="border-2 border-dashed border-primary-300 hover:border-primary-500 bg-primary-50/40 hover:bg-primary-50/70 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
               >
-                {uploadingIdCard ? (
+                {uploadingCertificate ? (
                   <div className="flex items-center gap-2 text-primary-700 text-xs font-bold">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Téléchargement sécurisé en cours...</span>
@@ -817,25 +808,14 @@ export default function SettingsPage() {
                       <Upload className="h-3.5 w-3.5" />
                     </div>
                     <p className="text-xs font-bold text-primary-900 leading-snug">
-                      Cliquer pour importer : Passeport, carte d&apos;identité ou carte d&apos;étudiant/lycéen
+                      Cliquer pour importer ton certificat de scolarité
                     </p>
                     <p className="text-[9.5px] text-text-tertiary mt-0.5">
-                      Formats acceptés : JPG, PNG ou PDF (Max 8 Mo) • Données chiffrées &amp; strictement confidentielles
+                      Formats acceptés : PDF, JPG ou PNG (Max 8 Mo) • Stockage privé &amp; strictement confidentiel
                     </p>
                   </>
                 )}
               </div>
-            </div>
-
-            {/* Démo rapide de validation */}
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => handleToggleVerification('verified')}
-                className="text-[9.5px] font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 cursor-pointer"
-              >
-                <span>⚡ Valider automatiquement mon justificatif &lt; 19 ans (Mode Démo)</span>
-              </button>
             </div>
           </div>
         )}

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('profiles')
-      .select('id, full_name, email, avatar_url, class_level, specialties, academic_goal, post_bac_target, school_id, school_name, is_visible_on_school, is_pro, preferences, created_at')
+      .select('id, full_name, email, avatar_url, class_level, specialties, academic_goal, post_bac_target, school_id, school_name, is_visible_on_school, is_pro, is_verified, preferences, created_at')
       .order('created_at', { ascending: false })
       .limit(60)
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           is_visible_on_school: p.is_visible_on_school ?? true,
           is_visible: p.is_visible_on_school ?? true,
           is_pro: Boolean(p.is_pro),
-          is_verified: Boolean(prefs.is_verified || p.is_pro),
+          is_verified: Boolean(p.is_verified),
           latitude: prefs.latitude ?? null,
           longitude: prefs.longitude ?? null,
           bio: prefs.bio || (p.specialties?.length ? `Spécialités : ${p.specialties.join(', ')}` : 'Élève actif sur OptiNote'),

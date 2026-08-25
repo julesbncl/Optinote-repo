@@ -8,7 +8,7 @@ export async function GET() {
 
     const { data: dbUsers, error } = await supabase
       .from('profiles')
-      .select('id, full_name, email, avatar_url, school_name, class_level, specialties, academic_goal, post_bac_target, is_visible_on_school, is_pro, preferences, updated_at')
+      .select('id, full_name, email, avatar_url, school_name, class_level, specialties, academic_goal, post_bac_target, is_visible_on_school, is_pro, is_verified, preferences, updated_at')
       .order('updated_at', { ascending: false })
       .limit(100)
 
@@ -46,7 +46,7 @@ export async function GET() {
           latitude: lat,
           longitude: lng,
           is_visible: u.is_visible_on_school ?? true,
-          is_verified: Boolean(prefs.is_verified || u.is_pro),
+          is_verified: Boolean(u.is_verified),
           bio: prefs.bio || (u.specialties?.length ? `Spécialités : ${u.specialties.join(', ')}` : 'Élève actif sur OptiNote'),
         }
       })
