@@ -5,13 +5,29 @@ import { User, MessageSquare, Check, X, UserPlus, Clock, Sparkles, Search } from
 import type { Profile } from '@/types/database'
 import type { Friendship } from '@/types/campus'
 
+type FriendWithConversation = Partial<Profile> & {
+  last_message_at?: string | null
+  last_message_preview?: string | null
+}
+
 interface FriendsListProps {
-  friends: Partial<Profile>[]
+  friends: FriendWithConversation[]
   pendingReceived: Friendship[]
   activeFriendId?: string | null
   onSelectFriend: (friend: Partial<Profile>) => void
   onAcceptRequest: (friendId: string) => Promise<void> | void
   onDeclineRequest: (friendId: string) => Promise<void> | void
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const diffMin = Math.round(diffMs / 60000)
+  if (diffMin < 1) return 'à l’instant'
+  if (diffMin < 60) return `${diffMin} min`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `${diffH} h`
+  const diffD = Math.round(diffH / 24)
+  return `${diffD} j`
 }
 
 export function FriendsList({
@@ -185,23 +201,31 @@ export function FriendsList({
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
                       <span>{friend.full_name}</span>
-                      {(friend as any).is_verified && (
+                      {friend.is_verified && (
                         <span className="text-[9px]" title="Lycéen Vérifié 🛡️">
                           🛡️
                         </span>
                       )}
                     </p>
                     <p className="text-[10px] text-text-tertiary truncate">
-                      {friend.school_name || 'Lycée'} • {friend.class_level || 'Lycéen'}
+                      {friend.last_message_preview
+                        ? friend.last_message_preview
+                        : `${friend.school_name || 'Lycée'} • ${friend.class_level || 'Lycéen'}`}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-[10px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-lg border border-primary-200 flex items-center gap-1">
-                    <MessageSquare className="h-2.5 w-2.5" />
-                    <span>Discuter</span>
-                  </span>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {friend.last_message_at ? (
+                    <span className="text-[9px] font-semibold text-text-tertiary">
+                      {formatRelativeTime(friend.last_message_at)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-lg border border-primary-200 flex items-center gap-1">
+                      <MessageSquare className="h-2.5 w-2.5" />
+                      <span>Discuter</span>
+                    </span>
+                  )}
                 </div>
               </div>
             )

@@ -83,24 +83,29 @@ function PrivateMessagesContent() {
 
     loadData()
 
-    // Abonnement Realtime pour les invitations d'ami
+    // Abonnement Realtime pour les invitations d'ami et l'activité des conversations
+    // (la table conversations est mise à jour par trigger à chaque message/amitié
+    // acceptée, ce qui permet de garder la liste triée par activité récente à jour)
+    const refreshFriendsAndPending = async () => {
+      const res = await fetch('/api/campus/friends')
+      if (res.ok) {
+        const data = await res.json()
+        setFriends(data.friends || [])
+        setPendingReceived(data.pendingReceived || [])
+      }
+    }
+
     const channel = supabase
       .channel('realtime:private_messages_hub')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships',
-        },
-        async () => {
-          const res = await fetch('/api/campus/friends')
-          if (res.ok) {
-            const data = await res.json()
-            setFriends(data.friends || [])
-            setPendingReceived(data.pendingReceived || [])
-          }
-        }
+        { event: '*', schema: 'public', table: 'friendships' },
+        refreshFriendsAndPending
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        refreshFriendsAndPending
       )
       .subscribe()
 

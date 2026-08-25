@@ -51,6 +51,33 @@ export async function GET() {
         .select('id, full_name, avatar_url, school_name, class_level, specialties, bio, is_verified')
         .in('id', acceptedFriendIds)
       friendsProfiles = profiles || []
+
+      // Dernière conversation active par ami (table conversations, tenue à jour
+      // par trigger dès qu'une amitié est acceptée ou qu'un message est envoyé)
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('user_a_id, user_b_id, last_message_at, last_message_preview')
+        .or(`user_a_id.eq.${user.id},user_b_id.eq.${user.id}`)
+
+      const conversationByFriendId = new Map(
+        (conversations || []).map((c) => [
+          c.user_a_id === user.id ? c.user_b_id : c.user_a_id,
+          { last_message_at: c.last_message_at, last_message_preview: c.last_message_preview },
+        ])
+      )
+
+      friendsProfiles = friendsProfiles
+        .map((f) => ({
+          ...f,
+          last_message_at: conversationByFriendId.get(f.id)?.last_message_at || null,
+          last_message_preview: conversationByFriendId.get(f.id)?.last_message_preview || null,
+        }))
+        .sort((a, b) => {
+          if (!a.last_message_at && !b.last_message_at) return 0
+          if (!a.last_message_at) return 1
+          if (!b.last_message_at) return -1
+          return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+        })
     }
 
     // Enrichir les demandes reçues/envoyées avec le profil de l'autre personne
