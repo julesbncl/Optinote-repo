@@ -205,8 +205,16 @@ function PrivateMessagesContent() {
 
       {/* Grille principale : Liste des amis (Gauche) & Fenêtre de Chat (Droite) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Colonne Gauche : Boîte de réception 1-à-1 et amis */}
-        <div className="lg:col-span-5 bg-surface rounded-2xl border border-border p-3.5 sm:p-4 shadow-sm space-y-3">
+        {/* Colonne Gauche : Boîte de réception 1-à-1 et amis
+            Sur mobile (< lg) : masquée dès qu'une conversation est ouverte, pour éviter
+            d'avoir la liste ET le chat empilés sur la même page (il fallait alors défiler
+            tout en bas pour voir la conversation, ce qui donnait l'impression qu'elle
+            avait disparu). */}
+        <div
+          className={`lg:col-span-5 bg-surface rounded-2xl border border-border p-3.5 sm:p-4 shadow-sm space-y-3 ${
+            selectedFriend ? 'hidden lg:block' : ''
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-border pb-2.5">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
@@ -236,12 +244,15 @@ function PrivateMessagesContent() {
           />
         </div>
 
-        {/* Colonne Droite : Fenêtre de discussion en direct */}
-        <div className="lg:col-span-7">
+        {/* Colonne Droite : Fenêtre de discussion en direct
+            Sur mobile : masquée tant qu'aucun ami n'est sélectionné, pour ne montrer que
+            la liste. Le bouton "retour" de ChatWindow ramène à la liste (onBack). */}
+        <div className={`lg:col-span-7 ${selectedFriend ? '' : 'hidden lg:block'}`}>
           {selectedFriend && profile ? (
             <ChatWindow
               directUser={selectedFriend}
               currentUserId={profile.id}
+              onBack={() => setSelectedFriend(null)}
             />
           ) : (
             <div className="h-[520px] bg-surface rounded-2xl border border-border flex flex-col items-center justify-center p-6 text-center space-y-3 shadow-sm">

@@ -217,7 +217,7 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack }: ChatW
             <button
               type="button"
               onClick={onBack}
-              className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary text-xs font-bold cursor-pointer sm:hidden"
+              className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary text-xs font-bold cursor-pointer lg:hidden"
             >
               ←
             </button>

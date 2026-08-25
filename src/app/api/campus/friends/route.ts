@@ -140,6 +140,38 @@ export async function POST(request: Request) {
     }
 
     if (action === 'request') {
+      // Si l'autre personne a déjà une demande en attente vers nous (ou est déjà
+      // notre ami), on ne crée jamais une seconde ligne dans l'autre sens :
+      // une demande mutuelle accepte directement, au lieu de dupliquer la relation.
+      const { data: reverse } = await supabase
+        .from('friendships')
+        .select('*')
+        .eq('user_id', friendId)
+        .eq('friend_id', user.id)
+        .maybeSingle()
+
+      if (reverse) {
+        if (reverse.status === 'accepted') {
+          return NextResponse.json({ success: true, friendship: reverse, message: 'Vous êtes déjà amis ! ✨' })
+        }
+        const { data: accepted, error: acceptErr } = await supabase
+          .from('friendships')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('id', reverse.id)
+          .select()
+          .single()
+
+        if (acceptErr) {
+          console.error('Error auto-accepting mutual friend request:', acceptErr)
+          return NextResponse.json({ error: 'Erreur lors de l’envoi de la demande' }, { status: 500 })
+        }
+        return NextResponse.json({
+          success: true,
+          friendship: accepted,
+          message: 'Demande d’ami acceptée ! 🎉',
+        })
+      }
+
       // Envoyer une demande d'ami
       const { data, error } = await supabase
         .from('friendships')

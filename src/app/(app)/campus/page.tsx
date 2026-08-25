@@ -229,6 +229,7 @@ function CampusHubContent() {
     longitude: 3.876716,
   })
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null)
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState('')
   const [flyToTarget, setFlyToTarget] = useState<{ latitude: number; longitude: number; zoom?: number } | null>(null)
   const boundsDebounceTimer = useRef<NodeJS.Timeout | null>(null)
 
@@ -395,6 +396,15 @@ function CampusHubContent() {
 
     return list
   }, [searchResults, mapUsers, profile?.id, profile?.email])
+
+  // Recherche de lycée pour se recentrer sur la carte (distincte de la recherche de camarades)
+  const filteredSchoolResults = useMemo(() => {
+    if (!schoolSearchQuery.trim()) return []
+    const q = schoolSearchQuery.toLowerCase().trim()
+    return schools
+      .filter((s) => s.name.toLowerCase().includes(q) || (s.city && s.city.toLowerCase().includes(q)))
+      .slice(0, 8)
+  }, [schoolSearchQuery, schools])
 
   const filteredSuggestedPeers = useMemo(() => {
     if (!mobilePeerSearch.trim()) return allAvailablePeers
@@ -798,17 +808,51 @@ function CampusHubContent() {
                   </>
                 )}
               </button>
-
-              {/* Bouton grand format plein écran */}
-              <Link
-                href="/campus/map"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 text-[9.5px] sm:text-[10px] font-bold border border-primary-200 transition-colors shadow-2xs"
-                title="Ouvrir la carte en plein écran"
-              >
-                <span>Plein écran</span>
-                <ChevronRight className="h-3 w-3" />
-              </Link>
             </div>
+          </div>
+
+          {/* Recherche de lycée (indépendante de la recherche de camarades sous la carte) */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary z-10" />
+            <input
+              type="text"
+              value={schoolSearchQuery}
+              onChange={(e) => setSchoolSearchQuery(e.target.value)}
+              placeholder="Rechercher ton lycée sur la carte..."
+              className="w-full pl-8 pr-7 py-2 rounded-xl bg-surface border border-border text-[10px] sm:text-xs font-medium text-text-primary placeholder:text-text-tertiary focus:outline-hidden focus:border-primary-500 transition-all shadow-2xs"
+            />
+            {schoolSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setSchoolSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary p-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+
+            {schoolSearchQuery.trim() && filteredSchoolResults.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-border bg-surface shadow-lg py-1">
+                {filteredSchoolResults.map((school) => (
+                  <button
+                    key={school.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSchool(school)
+                      setFlyToTarget({ latitude: Number(school.latitude), longitude: Number(school.longitude), zoom: 14 })
+                      setSchoolSearchQuery('')
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-secondary transition-colors cursor-pointer"
+                  >
+                    <GraduationCap className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-text-primary truncate">{school.name}</p>
+                      <p className="text-[9.5px] text-text-tertiary truncate">{school.city}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Carte Leaflet complète avec interaction, punaises de lycées et élèves */}
