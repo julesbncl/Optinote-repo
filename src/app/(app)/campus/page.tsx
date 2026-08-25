@@ -729,6 +729,14 @@ function CampusHubContent() {
     }
   }
 
+  // Tant que le vrai profil (et donc le vrai statut Pro) n'est pas encore chargé depuis
+  // Supabase, ne PAS évaluer PaywallGuard avec le profil par défaut (non abonné) : ça
+  // affiche brièvement l'écran d'abonnement même pour un compte Pro. On affiche un
+  // squelette neutre le temps que loadCampusData() termine.
+  if (loading) {
+    return <CampusLoading />
+  }
+
   return (
     <PaywallGuard
       profile={profile}

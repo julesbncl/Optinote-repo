@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ChatWindow } from '@/components/campus/ChatWindow'
 import { FriendsList } from '@/components/campus/FriendsList'
 import { PaywallGuard } from '@/components/paywall/PaywallGuard'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
   ArrowLeft,
   MessageSquare,
@@ -145,6 +146,21 @@ function PrivateMessagesContent() {
     } catch {
       toast.error('Erreur lors du refus')
     }
+  }
+
+  // Ne pas évaluer PaywallGuard tant que le vrai profil (et statut Pro) n'est pas
+  // chargé : sinon profile=null est traité comme "non abonné" et affiche brièvement
+  // l'écran d'abonnement même pour un compte Pro.
+  if (loading) {
+    return (
+      <div className="space-y-4 max-w-6xl mx-auto pb-12">
+        <Skeleton className="h-9 w-40" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <Skeleton className="lg:col-span-5 h-[520px] rounded-2xl" />
+          <Skeleton className="lg:col-span-7 h-[520px] rounded-2xl" />
+        </div>
+      </div>
+    )
   }
 
   return (
