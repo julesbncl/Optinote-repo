@@ -253,6 +253,7 @@ function PrivateMessagesContent() {
               directUser={selectedFriend}
               currentUserId={profile.id}
               onBack={() => setSelectedFriend(null)}
+              isFriend={friends.some((f) => f.id === selectedFriend.id)}
             />
           ) : (
             <div className="h-[520px] bg-surface rounded-2xl border border-border flex flex-col items-center justify-center p-6 text-center space-y-3 shadow-sm">

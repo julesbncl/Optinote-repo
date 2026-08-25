@@ -6,7 +6,7 @@ import { MessageBubble } from './MessageBubble'
 import { ReportModal } from './ReportModal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Send, Users, Shield, Sparkles, User, MessageCircle, UserPlus, Check } from 'lucide-react'
+import { Send, Users, Shield, Sparkles, User, MessageCircle, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Message, ChatChannel } from '@/types/campus'
 import type { Profile } from '@/types/database'
@@ -16,16 +16,19 @@ interface ChatWindowProps {
   directUser?: Partial<Profile> | null
   currentUserId: string
   onBack?: () => void
+  isFriend?: boolean
 }
 
-export function ChatWindow({ channel, directUser, currentUserId, onBack }: ChatWindowProps) {
+export function ChatWindow({ channel, directUser, currentUserId, onBack, isFriend = false }: ChatWindowProps) {
   const supabase = createClient()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [reportMessageId, setReportMessageId] = useState<string | null>(null)
-  const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'accepted'>('none')
+  const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'accepted'>(
+    isFriend ? 'accepted' : 'none'
+  )
   const [isSendingFriendReq, setIsSendingFriendReq] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -41,6 +44,11 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack }: ChatW
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  // Resynchronise le statut d'ami affiché quand on change de conversation
+  useEffect(() => {
+    setFriendStatus(isFriend ? 'accepted' : 'none')
+  }, [directUser?.id, isFriend])
 
   // Load existing messages & Realtime WebSockets
   useEffect(() => {
@@ -248,27 +256,20 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack }: ChatW
           </div>
         </div>
 
-        {/* Actions header (Ajout ami pour DM ou badge modération) */}
+        {/* Actions header (Ajout ami pour DM tant qu'on n'est pas déjà amis, ou badge modération) */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {isDirect && (
+          {isDirect && friendStatus !== 'accepted' && (
             <button
               type="button"
               onClick={handleSendFriendRequest}
               disabled={isSendingFriendReq || friendStatus !== 'none'}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                friendStatus === 'accepted'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : friendStatus === 'pending'
+                friendStatus === 'pending'
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
                   : 'bg-primary-50 hover:bg-primary-100 text-primary-700 border-primary-200'
               }`}
             >
-              {friendStatus === 'accepted' ? (
-                <>
-                  <Check className="h-3 w-3 text-emerald-600" />
-                  <span>Amis</span>
-                </>
-              ) : friendStatus === 'pending' ? (
+              {friendStatus === 'pending' ? (
                 <span>Demande envoyée</span>
               ) : (
                 <>
