@@ -56,9 +56,11 @@ export interface RevisionSession {
   type: 'online' | 'in_person'
   location?: string
   date_time: string
+  host_id?: string
   host_name: string
   host_avatar: string
   host_school: string
+  host_verified?: boolean
   max_participants: number
   current_participants: number
   joined?: boolean
@@ -256,60 +258,95 @@ function CampusHubContent() {
   const [proposeDateTime, setProposeDateTime] = useState("Aujourd'hui à 17h30")
   const [proposeMaxParticipants, setProposeMaxParticipants] = useState(4)
 
-  function handleCreateRevisionSession(e: React.FormEvent) {
+  async function handleCreateRevisionSession(e: React.FormEvent) {
     e.preventDefault()
     if (!proposeTitle.trim()) {
       toast.error('Veuillez renseigner le sujet ou titre de la révision.')
       return
     }
 
-    const newSession: RevisionSession = {
-      id: `rev-${Date.now()}`,
-      subject: proposeSubject,
-      title: proposeTitle.trim(),
-      type: proposeType,
-      location: proposeType === 'in_person' ? proposeLocation.trim() || 'CDI / Salle d’étude' : undefined,
-      date_time: proposeDateTime.trim() || "Aujourd'hui à 17h30",
-      host_name: profile.full_name || 'Moi',
-      host_avatar: profile.full_name ? profile.full_name.split(' ').map((n) => n[0]).join('') : 'MOI',
-      host_school: profile.school_name || 'Mon Lycée',
-      max_participants: Number(proposeMaxParticipants) || 4,
-      current_participants: 1,
-      joined: true,
-    }
+    try {
+      const res = await fetch('/api/campus/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: proposeSubject,
+          title: proposeTitle.trim(),
+          type: proposeType,
+          location: proposeType === 'in_person' ? proposeLocation.trim() || 'CDI / Salle d’étude' : undefined,
+          date_time: proposeDateTime.trim() || "Aujourd'hui à 17h30",
+          max_participants: proposeMaxParticipants,
+        }),
+      })
 
-    setRevisionSessions((prev) => [newSession, ...prev])
-    setShowProposeModal(false)
-    setProposeTitle('')
-    setProposeLocation('')
-    toast.success('Session de révision créée et publiée sur le Campus ! ✨', {
-      icon: '🚀',
-      duration: 4000,
-    })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de la création de la session')
+        return
+      }
+
+      const { session } = await res.json()
+      setRevisionSessions((prev) => [session, ...prev])
+      setShowProposeModal(false)
+      setProposeTitle('')
+      setProposeLocation('')
+      toast.success('Session de révision créée et publiée sur le Campus ! ✨', {
+        icon: '🚀',
+        duration: 4000,
+      })
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de la création de la session')
+    }
   }
 
-  function handleToggleJoinSession(session: RevisionSession) {
+  async function handleToggleJoinSession(session: RevisionSession) {
+    const wasJoined = session.joined
+
+    // Mise à jour optimiste
     setRevisionSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === session.id) {
-          const isJoined = s.joined
-          return {
-            ...s,
-            joined: !isJoined,
-            current_participants: isJoined ? Math.max(1, s.current_participants - 1) : s.current_participants + 1,
-          }
-        }
-        return s
-      })
+      prev.map((s) =>
+        s.id === session.id
+          ? {
+              ...s,
+              joined: !wasJoined,
+              current_participants: wasJoined
+                ? Math.max(1, s.current_participants - 1)
+                : s.current_participants + 1,
+            }
+          : s
+      )
     )
 
-    if (session.joined) {
-      toast('Tu as quitté cette session de révision.')
-    } else {
-      toast.success(`Tu as rejoint la session "${session.title}" ! Rendez-vous dans les salons. 🎉`, {
-        icon: '🤝',
-        duration: 4500,
+    try {
+      const res = await fetch(`/api/campus/sessions/${session.id}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: wasJoined ? 'leave' : 'join' }),
       })
+
+      if (!res.ok) {
+        // Annule la mise à jour optimiste en cas d'échec (ex: session complète)
+        const data = await res.json().catch(() => null)
+        setRevisionSessions((prev) =>
+          prev.map((s) => (s.id === session.id ? session : s))
+        )
+        toast.error(data?.error || 'Erreur lors de la mise à jour de la session')
+        return
+      }
+
+      if (wasJoined) {
+        toast('Tu as quitté cette session de révision.')
+      } else {
+        toast.success(`Tu as rejoint la session "${session.title}" ! Rendez-vous dans les salons. 🎉`, {
+          icon: '🤝',
+          duration: 4500,
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setRevisionSessions((prev) => prev.map((s) => (s.id === session.id ? session : s)))
+      toast.error('Erreur lors de la mise à jour de la session')
     }
   }
 
@@ -507,12 +544,13 @@ function CampusHubContent() {
           }
         }
 
-        // Charger canaux, lycées, utilisateurs de la carte et amis en parallèle
-        const [channelsRes, schoolsRes, usersRes, friendsRes] = await Promise.all([
+        // Charger canaux, lycées, utilisateurs de la carte, amis et sessions en parallèle
+        const [channelsRes, schoolsRes, usersRes, friendsRes, sessionsRes] = await Promise.all([
           fetch('/api/campus/channels'),
           fetch('/api/campus/schools'),
           fetch('/api/campus/users/location'),
           fetch('/api/campus/friends'),
+          fetch('/api/campus/sessions'),
         ])
 
         if (channelsRes.ok) {
@@ -537,6 +575,11 @@ function CampusHubContent() {
           setFriends(fData.friends || [])
           setPendingReceived(fData.pendingReceived || [])
           setPendingSent(fData.pendingSent || [])
+        }
+
+        if (sessionsRes.ok) {
+          const sessData = await sessionsRes.json()
+          setRevisionSessions(sessData.sessions || [])
         }
       } catch (err) {
         console.error('Error loading campus data:', err)
@@ -569,8 +612,37 @@ function CampusHubContent() {
       )
       .subscribe()
 
+    // Abonnement Realtime pour les sessions de révision (créées/rejointes par
+    // n'importe quel élève, pas seulement soi-même)
+    const sessionsChannel = supabase
+      .channel('realtime:study_sessions')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'study_sessions' },
+        async () => {
+          const res = await fetch('/api/campus/sessions')
+          if (res.ok) {
+            const data = await res.json()
+            setRevisionSessions(data.sessions || [])
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'study_session_participants' },
+        async () => {
+          const res = await fetch('/api/campus/sessions')
+          if (res.ok) {
+            const data = await res.json()
+            setRevisionSessions(data.sessions || [])
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(friendshipsChannel)
+      supabase.removeChannel(sessionsChannel)
     }
   }, [supabase])
 
@@ -869,6 +941,7 @@ function CampusHubContent() {
               selectedSchoolId={selectedSchool?.id}
               flyToTarget={flyToTarget}
               isCurrentUserVerified={profile?.is_verified}
+              isCurrentUserStudying={revisionSessions.some((s) => s.joined)}
               height="h-[220px] sm:h-[300px] lg:h-[380px]"
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}

@@ -74,8 +74,14 @@ function createSchoolIcon(isSelected: boolean = false, isUserSchool: boolean = f
   })
 }
 
+// Badge "chapeau d'étudiant" (mortarboard) : affiché sur un marqueur dès que
+// l'élève anime ou a rejoint une session de révision en groupe active.
+function studyingCapBadge(size: number, top: string, left: string) {
+  return `<div style="position: absolute; top: ${top}; left: ${left}; width: ${size}px; height: ${size}px; background: #1f2937; border-radius: 50%; border: 1.5px solid white; display: flex; align-items: center; justify-content: center; font-size: ${Math.round(size * 0.62)}px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); line-height: 1;" title="En session de révision 🎓">🎓</div>`
+}
+
 // 2. Icône pour les camarades / lycéens membres normaux (36px)
-function createStudentIcon(name?: string | null, avatarUrl?: string | null, isVerified: boolean = false) {
+function createStudentIcon(name?: string | null, avatarUrl?: string | null, isVerified: boolean = false, isStudying: boolean = false) {
   const safeName = name && typeof name === 'string' ? name.trim() : ''
   const initials = safeName
     ? safeName
@@ -102,6 +108,7 @@ function createStudentIcon(name?: string | null, avatarUrl?: string | null, isVe
           ${contentHtml}
         </div>
         ${verifiedBadge}
+        ${isStudying ? studyingCapBadge(15, '-3px', '-3px') : ''}
       </div>
     `,
     className: 'custom-leaflet-student-pin',
@@ -112,7 +119,7 @@ function createStudentIcon(name?: string | null, avatarUrl?: string | null, isVe
 }
 
 // 3. Icône SPÉCIALE UTILISATEUR CONNECTÉ (Significativement plus grande, 56px, avec photo de profil et halo radar vibrant)
-function createCurrentUserAvatarIcon(avatarUrl?: string | null, name?: string | null, isVerified: boolean = false) {
+function createCurrentUserAvatarIcon(avatarUrl?: string | null, name?: string | null, isVerified: boolean = false, isStudying: boolean = false) {
   const safeName = name && typeof name === 'string' ? name.trim() : ''
   const initials = safeName
     ? safeName
@@ -145,6 +152,7 @@ function createCurrentUserAvatarIcon(avatarUrl?: string | null, name?: string | 
         </div>
 
         ${verifiedBadge}
+        ${isStudying ? studyingCapBadge(24, '-2px', '-2px') : ''}
 
         <!-- Badge "Moi 📍" -->
         <div style="position: absolute; bottom: -8px; background: #059669; color: #ffffff; font-size: 10px; font-weight: 900; padding: 1.5px 7px; border-radius: 9999px; border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -415,6 +423,7 @@ interface SchoolMapClientProps {
   defaultCenter?: [number, number]
   defaultZoom?: number
   isCurrentUserVerified?: boolean
+  isCurrentUserStudying?: boolean
   height?: string
   className?: string
   isLocked?: boolean
@@ -439,6 +448,7 @@ export default function SchoolMapClient({
   defaultCenter: propDefaultCenter,
   defaultZoom: propDefaultZoom,
   isCurrentUserVerified = false,
+  isCurrentUserStudying = false,
   height,
   className,
   isLocked = false,
@@ -531,7 +541,7 @@ export default function SchoolMapClient({
         {effectiveUserLocation && (
           <Marker
             position={[effectiveUserLocation.latitude, effectiveUserLocation.longitude]}
-            icon={createCurrentUserAvatarIcon(currentUserAvatarUrl, currentUserName, isCurrentUserVerified)}
+            icon={createCurrentUserAvatarIcon(currentUserAvatarUrl, currentUserName, isCurrentUserVerified, isCurrentUserStudying)}
             zIndexOffset={1000}
           >
             <Popup className="user-custom-popup" minWidth={220}>
@@ -596,7 +606,7 @@ export default function SchoolMapClient({
             <Marker
               key={`student-${student.id}`}
               position={[lat, lng]}
-              icon={createStudentIcon(student.full_name || 'Lycéen', student.avatar_url, isStudentVerified)}
+              icon={createStudentIcon(student.full_name || 'Lycéen', student.avatar_url, isStudentVerified, Boolean(student.is_studying))}
               zIndexOffset={100}
             >
               <Popup className="student-custom-popup" minWidth={250} maxWidth={300}>

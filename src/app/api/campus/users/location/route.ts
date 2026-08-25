@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateUserLocationSchema } from '@/lib/validators/campus'
 
+// Même fenêtre "active" que /api/campus/sessions
+const ACTIVE_SESSION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -15,6 +18,24 @@ export async function GET() {
     if (error || !dbUsers) {
       console.warn('Error fetching profiles for campus map:', error)
       return NextResponse.json({ users: [] })
+    }
+
+    // Élèves ayant une session de révision active/à venir (créée ou rejointe) :
+    // affiche un badge chapeau d'étudiant 🎓 sur leur marqueur.
+    const cutoff = new Date(Date.now() - ACTIVE_SESSION_WINDOW_MS).toISOString()
+    const { data: activeSessions } = await supabase
+      .from('study_sessions')
+      .select('id')
+      .gte('created_at', cutoff)
+
+    const activeSessionIds = (activeSessions || []).map((s) => s.id)
+    let studyingUserIds = new Set<string>()
+    if (activeSessionIds.length > 0) {
+      const { data: activeParticipants } = await supabase
+        .from('study_session_participants')
+        .select('user_id')
+        .in('session_id', activeSessionIds)
+      studyingUserIds = new Set((activeParticipants || []).map((p) => p.user_id))
     }
 
     const mappedUsers = dbUsers
@@ -47,6 +68,7 @@ export async function GET() {
           longitude: lng,
           is_visible: u.is_visible_on_school ?? true,
           is_verified: Boolean(u.is_verified),
+          is_studying: studyingUserIds.has(u.id),
           bio: prefs.bio || (u.specialties?.length ? `Spécialités : ${u.specialties.join(', ')}` : 'Élève actif sur OptiNote'),
         }
       })

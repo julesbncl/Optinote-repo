@@ -19,6 +19,7 @@ export interface Profile {
   latitude?: number | null
   longitude?: number | null
   is_visible?: boolean
+  is_studying?: boolean
   bio?: string | null
   stripe_customer_id?: string | null
   subscription_tier?: 'free' | 'monthly' | 'annual'

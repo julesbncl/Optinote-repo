@@ -26,6 +26,7 @@ export interface SchoolMapProps {
   selectedSchoolId?: string | null
   flyToTarget?: { latitude: number; longitude: number; zoom?: number } | null
   isCurrentUserVerified?: boolean
+  isCurrentUserStudying?: boolean
   defaultCenter?: [number, number]
   defaultZoom?: number
   height?: string
