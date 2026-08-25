@@ -16,9 +16,10 @@ import { PaywallModal } from '@/components/paywall/PaywallModal'
 
 interface BottomNavProps {
   profile?: Profile | null
+  campusBadgeCount?: number
 }
 
-export function BottomNav({ profile }: BottomNavProps) {
+export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
   const pathname = usePathname()
   const [paywallFeature, setPaywallFeature] = useState<'campus' | 'planning' | null>(null)
 
@@ -159,6 +160,14 @@ export function BottomNav({ profile }: BottomNavProps) {
                       title="Réservé aux abonnés Pro"
                     >
                       PRO
+                    </span>
+                  )}
+                  {!item.isLocked && item.href === '/campus' && campusBadgeCount > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-danger-500 text-white text-[7px] sm:text-[8px] font-black flex items-center justify-center shadow-2xs border border-surface leading-none"
+                      title={`${campusBadgeCount} notification${campusBadgeCount > 1 ? 's' : ''} sur le Campus`}
+                    >
+                      {campusBadgeCount > 9 ? '9+' : campusBadgeCount}
                     </span>
                   )}
                 </div>

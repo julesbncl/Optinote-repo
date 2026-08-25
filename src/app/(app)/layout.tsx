@@ -41,6 +41,7 @@ export default function AppLayout({
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [campusBadgeCount, setCampusBadgeCount] = useState(0)
 
   useEffect(() => {
     async function fetchProfile(userId: string) {
@@ -98,6 +99,43 @@ export default function AppLayout({
     }
   }, [supabase])
 
+  // Badge de notification sur l'onglet Campus : demandes d'amis en attente + messages non lus
+  useEffect(() => {
+    async function loadCampusBadge() {
+      try {
+        const res = await fetch('/api/campus/friends')
+        if (res.ok) {
+          const data = await res.json()
+          setCampusBadgeCount(
+            (data.pendingReceived?.length || 0) + (data.unreadMessagesCount || 0)
+          )
+        }
+      } catch {
+        // Silencieux : le badge reste simplement à son ancienne valeur
+      }
+    }
+
+    loadCampusBadge()
+
+    const notifChannel = supabase
+      .channel('realtime:campus_notifications')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships' },
+        loadCampusBadge
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        loadCampusBadge
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notifChannel)
+    }
+  }, [supabase])
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -119,7 +157,7 @@ export default function AppLayout({
   return (
     <div className="min-h-screen flex bg-surface-secondary">
       {/* Desktop Sidebar */}
-      <Sidebar profile={profile} onSignOut={handleSignOut} />
+      <Sidebar profile={profile} onSignOut={handleSignOut} campusBadgeCount={campusBadgeCount} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -133,7 +171,7 @@ export default function AppLayout({
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <BottomNav profile={profile} />
+      <BottomNav profile={profile} campusBadgeCount={campusBadgeCount} />
     </div>
   )
 }

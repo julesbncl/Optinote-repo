@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Données spécifiques à l'utilisateur connecté (amis, demandes en attente) :
+// ne doit jamais être mise en cache, sous peine d'afficher une liste périmée.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -9,7 +14,7 @@ export async function GET() {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ friends: [], pendingReceived: [], pendingSent: [] })
+      return NextResponse.json({ friends: [], pendingReceived: [], pendingSent: [], unreadMessagesCount: 0 })
     }
 
     // Récupérer toutes les relations de l'utilisateur
@@ -19,8 +24,14 @@ export async function GET() {
       .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
 
     if (error || !friendships) {
-      return NextResponse.json({ friends: [], pendingReceived: [], pendingSent: [] })
+      return NextResponse.json({ friends: [], pendingReceived: [], pendingSent: [], unreadMessagesCount: 0 })
     }
+
+    const { count: unreadMessagesCount } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .eq('is_read', false)
 
     const acceptedFriendIds = friendships
       .filter((f) => f.status === 'accepted')
@@ -71,6 +82,7 @@ export async function GET() {
       friends: friendsProfiles,
       pendingReceived: pendingReceivedWithProfiles,
       pendingSent: pendingSentWithProfiles,
+      unreadMessagesCount: unreadMessagesCount || 0,
     })
   } catch (error) {
     console.error('Error fetching friendships:', error)

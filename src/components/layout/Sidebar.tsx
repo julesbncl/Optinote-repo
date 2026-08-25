@@ -33,9 +33,10 @@ const iconMap = {
 interface SidebarProps {
   profile: Profile | null
   onSignOut: () => void
+  campusBadgeCount?: number
 }
 
-export function Sidebar({ profile, onSignOut }: SidebarProps) {
+export function Sidebar({ profile, onSignOut, campusBadgeCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [paywallFeature, setPaywallFeature] = useState<'campus' | 'planning' | null>(null)
@@ -105,6 +106,14 @@ export function Sidebar({ profile, onSignOut }: SidebarProps) {
                     title="Réservé aux abonnés Pro"
                   >
                     PRO
+                  </span>
+                )}
+                {!isLocked && item.href === '/campus' && campusBadgeCount > 0 && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-danger-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs border border-white leading-none"
+                    title={`${campusBadgeCount} notification${campusBadgeCount > 1 ? 's' : ''} sur le Campus`}
+                  >
+                    {campusBadgeCount > 9 ? '9+' : campusBadgeCount}
                   </span>
                 )}
               </div>

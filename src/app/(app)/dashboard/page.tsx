@@ -81,9 +81,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ friendId: peer.id, action: 'request' }),
       })
-      toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`, { icon: '👋' })
+      if (res.ok) {
+        toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`, { icon: '👋' })
+      } else {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’envoi de la demande')
+      }
     } catch {
-      toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`, { icon: '👋' })
+      toast.error('Erreur lors de l’envoi de la demande')
     }
   }
 

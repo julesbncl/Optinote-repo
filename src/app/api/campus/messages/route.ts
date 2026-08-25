@@ -8,6 +8,11 @@ import { sendMessageSchema } from '@/lib/validators/campus'
 
 import { z } from 'zod'
 
+// Conversations privées : jamais de cache, sinon un utilisateur peut voir
+// une conversation périmée après un nouveau message ou une nouvelle amitié.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -54,6 +59,17 @@ export async function GET(request: Request) {
       if (error) {
         return NextResponse.json({ messages: [] })
       }
+
+      // Marquer comme lus les messages reçus dans cette conversation
+      // (attendu avant la réponse : une fonction serverless peut être coupée
+      // dès qu'une réponse est renvoyée, un appel non attendu ne partirait pas)
+      const { error: readError } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', receiverId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false)
+      if (readError) console.error('Error marking messages as read:', readError)
 
       return NextResponse.json({ messages: messages || [] })
     }

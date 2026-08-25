@@ -214,6 +214,7 @@ function CampusHubContent() {
   const [channels, setChannels] = useState<ChatChannel[]>(DEFAULT_CHANNELS)
   const [friends, setFriends] = useState<Partial<Profile>[]>([])
   const [pendingReceived, setPendingReceived] = useState<Friendship[]>([])
+  const [pendingSent, setPendingSent] = useState<Friendship[]>([])
   const [loading, setLoading] = useState(true)
   const [channelSearch, setChannelSearch] = useState('')
   const [mobilePeerSearch, setMobilePeerSearch] = useState('')
@@ -525,6 +526,7 @@ function CampusHubContent() {
           const fData = await friendsRes.json()
           setFriends(fData.friends || [])
           setPendingReceived(fData.pendingReceived || [])
+          setPendingSent(fData.pendingSent || [])
         }
       } catch (err) {
         console.error('Error loading campus data:', err)
@@ -551,6 +553,7 @@ function CampusHubContent() {
             const fData = await friendsRes.json()
             setFriends(fData.friends || [])
             setPendingReceived(fData.pendingReceived || [])
+            setPendingSent(fData.pendingSent || [])
           }
         }
       )
@@ -666,11 +669,18 @@ function CampusHubContent() {
       })
       if (res.ok) {
         toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`)
+        // Mise à jour immédiate du bouton sans attendre le round-trip Realtime
+        setPendingSent((prev) =>
+          prev.some((f) => f.friend_id === peer.id)
+            ? prev
+            : [...prev, { id: `tmp-${peer.id}`, user_id: profile.id, friend_id: peer.id, status: 'pending', created_at: new Date().toISOString() }]
+        )
       } else {
-        toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`)
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’envoi de la demande')
       }
     } catch {
-      toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`)
+      toast.error('Erreur lors de l’envoi de la demande')
     }
   }
 
@@ -906,14 +916,39 @@ function CampusHubContent() {
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-1.5 pt-0.2 sm:pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSendFriendRequest(peer)}
-                        className="flex-1 h-5.5 sm:h-6.5 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[8.5px] sm:text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 cursor-pointer"
-                      >
-                        <UserPlus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                        <span>Ajouter</span>
-                      </button>
+                      {(() => {
+                        const isFriend = friends.some((f) => f.id === peer.id)
+                        const isPendingSent = pendingSent.some((f) => f.friend_id === peer.id)
+                        const isPendingReceived = pendingReceived.some((f) => f.user_id === peer.id)
+
+                        if (isFriend) {
+                          return (
+                            <span className="flex-1 h-5.5 sm:h-6.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8.5px] sm:text-[10px] font-bold flex items-center justify-center gap-0.5 sm:gap-1">
+                              <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              <span>Ami</span>
+                            </span>
+                          )
+                        }
+
+                        if (isPendingSent || isPendingReceived) {
+                          return (
+                            <span className="flex-1 h-5.5 sm:h-6.5 rounded-lg bg-surface-secondary text-text-tertiary border border-border text-[8.5px] sm:text-[10px] font-bold flex items-center justify-center gap-0.5 sm:gap-1">
+                              <span>Demande en attente</span>
+                            </span>
+                          )
+                        }
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleSendFriendRequest(peer)}
+                            className="flex-1 h-5.5 sm:h-6.5 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[8.5px] sm:text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 cursor-pointer"
+                          >
+                            <UserPlus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            <span>Ajouter</span>
+                          </button>
+                        )
+                      })()}
                       <button
                         type="button"
                         onClick={() => handleStartDirectChat(peer)}
