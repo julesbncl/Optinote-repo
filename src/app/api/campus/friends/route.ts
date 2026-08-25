@@ -46,18 +46,20 @@ export async function GET() {
 
     let friendsProfiles: any[] = []
     if (acceptedFriendIds.length > 0) {
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesErr } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, school_name, class_level, specialties, bio, is_verified')
+        .select('id, full_name, avatar_url, school_name, class_level, specialties, is_verified')
         .in('id', acceptedFriendIds)
+      if (profilesErr) console.error('Error fetching friend profiles:', profilesErr)
       friendsProfiles = profiles || []
 
       // Dernière conversation active par ami (table conversations, tenue à jour
       // par trigger dès qu'une amitié est acceptée ou qu'un message est envoyé)
-      const { data: conversations } = await supabase
+      const { data: conversations, error: conversationsErr } = await supabase
         .from('conversations')
         .select('user_a_id, user_b_id, last_message_at, last_message_preview')
         .or(`user_a_id.eq.${user.id},user_b_id.eq.${user.id}`)
+      if (conversationsErr) console.error('Error fetching conversations:', conversationsErr)
 
       const conversationByFriendId = new Map(
         (conversations || []).map((c) => [
