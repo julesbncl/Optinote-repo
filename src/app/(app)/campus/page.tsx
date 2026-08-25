@@ -747,9 +747,9 @@ function CampusHubContent() {
       {/* ═══════════════════════════════════════════════════════
           LAYOUT PRINCIPAL EN 2 COLONNES
           ═══════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-        {/* COLONNE GAUCHE (7 cols) : GRANDE CARTE INTERACTIVE LEAFLET / OPENSTREETMAP */}
-        <div className="lg:col-span-7 flex flex-col min-h-[560px] lg:min-h-[640px] space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* COLONNE GAUCHE (7 cols) : CARTE INTERACTIVE LEAFLET */}
+        <div className="lg:col-span-7 flex flex-col space-y-2">
           {/* Header Bar de la Carte Responsive */}
           <div className="bg-surface rounded-2xl border border-border p-2.5 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 shadow-xs">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
@@ -809,7 +809,7 @@ function CampusHubContent() {
           </div>
 
           {/* Carte Leaflet complète avec interaction, punaises de lycées et élèves */}
-          <div className="flex-1 w-full rounded-2xl overflow-hidden shadow-xs border border-border">
+          <div className="w-full rounded-2xl overflow-hidden shadow-xs border border-border">
             <SchoolMap
               schools={schools}
               users={mapUsers}

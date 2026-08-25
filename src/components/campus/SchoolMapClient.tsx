@@ -680,51 +680,6 @@ export default function SchoolMapClient({
         })}
       </MapContainer>
 
-      {/* Panneau flottant d'information sur le lycée sélectionné au-dessus de la carte */}
-      {currentSelectedSchool && (
-        <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xs z-10 bg-surface/95 backdrop-blur-md rounded-2xl border border-amber-300 shadow-xl p-3 space-y-2 animate-in fade-in-50 slide-in-from-top-2 duration-150">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-                <SchoolIcon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-black text-xs text-text-primary leading-tight truncate">
-                  {currentSelectedSchool.name}
-                </h4>
-                <p className="text-[10px] text-text-secondary truncate">
-                  {currentSelectedSchool.city} • {currentSelectedSchool.academy}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-[10px] font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
-            <span>💬 Salon d’entraide officiel</span>
-            {isSelectedUserSchool && (
-              <span className="text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded font-black">
-                ✓ Ton Lycée
-              </span>
-            )}
-          </div>
-
-          {!isSelectedUserSchool && onSetUserSchool ? (
-            <button
-              type="button"
-              onClick={() => onSetUserSchool(currentSelectedSchool)}
-              className="w-full h-8 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white text-[11px] font-black shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <GraduationCap className="h-3.5 w-3.5" />
-              <span>Rejoindre ce lycée et rendre mon profil public</span>
-            </button>
-          ) : isSelectedUserSchool ? (
-            <div className="w-full h-6.5 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center justify-center gap-1 border border-emerald-300">
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-              <span>Profil public actif</span>
-            </div>
-          ) : null}
-        </div>
-      )}
 
       {/* Overlay Pro semi-transparent lorsque non abonné */}
       {isLocked && (
