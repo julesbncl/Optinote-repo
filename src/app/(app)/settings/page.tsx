@@ -30,6 +30,8 @@ import {
   Mail,
   MessageSquare,
   UserPlus,
+  Sun,
+  TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -77,17 +79,24 @@ export default function SettingsPage() {
     messages: true,
     friends: true,
     revisions: true,
+    planningReminder: true,
+    gradeEvolution: true,
   })
   const [savingNotifKey, setSavingNotifKey] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
 
-  async function updateNotifPref(key: 'messages' | 'friends' | 'revisions', value: boolean) {
+  async function updateNotifPref(
+    key: 'messages' | 'friends' | 'revisions' | 'planningReminder' | 'gradeEvolution',
+    value: boolean
+  ) {
     const column = {
       messages: 'email_notif_messages',
       friends: 'email_notif_friends',
       revisions: 'email_notif_revisions',
+      planningReminder: 'email_notif_planning_reminder',
+      gradeEvolution: 'email_notif_grade_evolution',
     }[key]
 
     const previous = notifPrefs[key]
@@ -153,6 +162,8 @@ export default function SettingsPage() {
               messages: data.email_notif_messages ?? true,
               friends: data.email_notif_friends ?? true,
               revisions: data.email_notif_revisions ?? true,
+              planningReminder: data.email_notif_planning_reminder ?? true,
+              gradeEvolution: data.email_notif_grade_evolution ?? true,
             })
           }
         } else {
@@ -940,6 +951,42 @@ export default function SettingsPage() {
               onChange={(value) => updateNotifPref('revisions', value)}
               disabled={savingNotifKey === 'revisions'}
               label="Notifications par e-mail pour les nouvelles sessions de révision"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sun className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-primary">Rappel du planning</p>
+                <p className="text-[8.5px] text-text-secondary leading-snug">
+                  Un e-mail chaque matin avec ton planning du jour
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={notifPrefs.planningReminder}
+              onChange={(value) => updateNotifPref('planningReminder', value)}
+              disabled={savingNotifKey === 'planningReminder'}
+              label="Notifications par e-mail pour le rappel du planning"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <TrendingUp className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-primary">Évolution de la moyenne</p>
+                <p className="text-[8.5px] text-text-secondary leading-snug">
+                  Un e-mail quand ta moyenne générale progresse ou baisse
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={notifPrefs.gradeEvolution}
+              onChange={(value) => updateNotifPref('gradeEvolution', value)}
+              disabled={savingNotifKey === 'gradeEvolution'}
+              label="Notifications par e-mail pour l'évolution de la moyenne"
             />
           </div>
         </div>

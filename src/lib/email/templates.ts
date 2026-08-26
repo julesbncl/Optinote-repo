@@ -106,6 +106,96 @@ export function getNotificationEmailHtml({
   `
 }
 
+interface PlanningReminderSlot {
+  startTime: string
+  endTime: string
+  subject: string
+  task?: string
+}
+
+interface PlanningReminderEmailProps {
+  name?: string
+  greeting: string
+  motivationPhrase: string
+  averageLine?: string | null
+  streak?: number
+  slots: PlanningReminderSlot[]
+  planningUrl?: string
+}
+
+export function getPlanningReminderEmailHtml({
+  greeting,
+  motivationPhrase,
+  averageLine,
+  streak = 0,
+  slots,
+  planningUrl = 'https://optinote.fr/planning',
+}: PlanningReminderEmailProps): string {
+  const slotsHtml =
+    slots.length > 0
+      ? slots
+          .map(
+            (s) => `
+      <div class="slot">
+        <span class="slot-time">${s.startTime}–${s.endTime}</span>
+        <span class="slot-subject">${s.subject}${s.task ? ` — ${s.task}` : ''}</span>
+      </div>`
+          )
+          .join('')
+      : `<p style="font-size: 13px; color: #64748B; margin: 0;">Aucun créneau planifié aujourd'hui — profites-en pour avancer une fiche ou revoir un chapitre en autonomie.</p>`
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ton planning du jour — OptiNote</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 24px; }
+    .container { max-width: 560px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0; padding: 36px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+    .logo-badge { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: linear-gradient(135deg, #4F46E5, #7C3AED); border-radius: 12px; color: #FFFFFF; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    h1 { font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 10px 0; }
+    p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 16px 0; }
+    .stat-box { background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; color: #3730A3; margin: 0 0 12px 0; }
+    .streak-box { background: linear-gradient(135deg, #FFF7ED, #FFEDD5); border: 1px solid #FED7AA; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 800; color: #9A3412; margin: 0 0 16px 0; }
+    .feature-box { background: #F1F5F9; border-radius: 12px; padding: 16px; margin: 4px 0 20px 0; border: 1px solid #E2E8F0; }
+    .feature-title { font-weight: 800; font-size: 13px; color: #0F172A; margin: 0 0 10px 0; }
+    .slot { display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; color: #334155; padding: 7px 0; border-bottom: 1px solid #E2E8F0; }
+    .slot:last-child { border-bottom: none; }
+    .slot-time { font-weight: 800; color: #4F46E5; }
+    .slot-subject { color: #334155; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #FFFFFF !important; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin-top: 6px; text-align: center; }
+    .footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #F1F5F9; text-align: center; font-size: 11px; color: #94A3B8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-badge">☀️</div>
+    <h1>${greeting}</h1>
+    <p>${motivationPhrase}</p>
+
+    ${averageLine ? `<div class="stat-box">📊 ${averageLine}</div>` : ''}
+    ${streak >= 2 ? `<div class="streak-box">🔥 Série de ${streak} jours consécutifs sur OptiNote !</div>` : ''}
+
+    <div class="feature-box">
+      <p class="feature-title">📅 Ton planning du jour</p>
+      ${slotsHtml}
+    </div>
+
+    <div style="text-align: center;">
+      <a href="${planningUrl}" class="btn">Ouvrir mon planning ➔</a>
+    </div>
+
+    <div class="footer">
+      <p>© 2026 OptiNote • Rappel automatique du matin • <a href="https://optinote.fr/settings" style="color: #4F46E5;">Gérer mes notifications</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `
+}
+
 export interface VerificationEmailProps {
   name?: string
   verificationUrl: string

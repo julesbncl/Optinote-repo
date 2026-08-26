@@ -21,7 +21,9 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  LineChart,
 } from 'lucide-react'
+import { GradeEvolutionModal } from '@/components/grades/GradeEvolutionModal'
 import toast from 'react-hot-toast'
 import type { Subject, Grade, Profile } from '@/types/database'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
@@ -61,6 +63,7 @@ export default function GradesPage() {
   const [showCurriculumModal, setShowCurriculumModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'subject' | 'grade'; id: string } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showEvolutionModal, setShowEvolutionModal] = useState(false)
 
   const isSubscribed = checkIsPro(profile)
 
@@ -264,6 +267,12 @@ export default function GradesPage() {
 
         if (!error && data) {
           setGrades((prev) => [data, ...prev])
+
+          if (!isSimulated) {
+            fetch('/api/grades/notify-evolution', { method: 'POST' }).catch((err) =>
+              console.warn('Error checking grade evolution:', err)
+            )
+          }
         }
       } else {
         const newGrade: Grade = {
@@ -459,6 +468,16 @@ export default function GradesPage() {
           <Button
             size="sm"
             variant="secondary"
+            onClick={() => setShowEvolutionModal(true)}
+            className="text-[10px] sm:text-xs font-bold gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 shadow-2xs"
+          >
+            <LineChart className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-600" />
+            <span>Évolution de la moyenne</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => setShowAddSubject(true)}
             className="text-[10px] sm:text-xs font-semibold gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl"
           >
@@ -467,6 +486,8 @@ export default function GradesPage() {
           </Button>
         </div>
       </div>
+
+      <GradeEvolutionModal isOpen={showEvolutionModal} onClose={() => setShowEvolutionModal(false)} />
 
       {/* Overview stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">

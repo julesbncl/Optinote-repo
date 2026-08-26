@@ -3,6 +3,7 @@ import {
   getWelcomeEmailHtml,
   getNotificationEmailHtml,
   getVerificationEmailHtml,
+  getPlanningReminderEmailHtml,
   type VerificationEmailProps,
 } from './templates'
 
@@ -176,6 +177,24 @@ export async function sendNotificationEmail(
     to,
     from: 'OptiNote <contact@optinote.fr>',
     subject: `OptiNote : ${title}`,
+    html,
+  })
+}
+
+/**
+ * Envoie l'e-mail de rappel matinal du planning du jour, avec un message de
+ * motivation et un rappel de la moyenne actuelle.
+ */
+export async function sendPlanningReminderEmail(
+  to: string,
+  options: Parameters<typeof getPlanningReminderEmailHtml>[0]
+): Promise<SendEmailResult> {
+  const html = getPlanningReminderEmailHtml(options)
+
+  return sendEmail({
+    to,
+    from: 'OptiNote <contact@optinote.fr>',
+    subject: '☀️ Ton planning du jour — OptiNote',
     html,
   })
 }

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { calculateWeightedAverage } from '@/lib/utils'
 import { SchoolMap } from '@/components/campus/SchoolMap'
 import { DashboardPlanningGrid } from '@/components/dashboard/DashboardPlanningGrid'
+import { getMotivationalMessage, getGoalLabel } from '@/lib/motivation'
 import {
   CalendarDays,
   GraduationCap,
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(true)
+  const [streak, setStreak] = useState({ current: 0, longest: 0 })
 
   // États liés aux amis (pour afficher le bon statut dans "Camarades de spécialité")
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
@@ -362,6 +364,15 @@ export default function DashboardPage() {
 
           loadFriendStatus()
 
+          fetch('/api/streak/ping', { method: 'POST' })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((streakData) => {
+              if (streakData) {
+                setStreak({ current: streakData.current_streak, longest: streakData.longest_streak })
+              }
+            })
+            .catch((err) => console.warn('Error updating streak:', err))
+
           setData({
             subjects: subjectsRes.data && subjectsRes.data.length > 0 ? subjectsRes.data : [
               { id: 'sub-1', user_id: user.id, name: 'Mathématiques', coefficient: 5, color: '#6366F1', teacher_name: null, created_at: new Date().toISOString() },
@@ -438,6 +449,13 @@ export default function DashboardPage() {
       : 16.0
   const sheetsCount = data?.recentSheets ? data.recentSheets.length : 0
 
+  const motivation = getMotivationalMessage({
+    name: profile.full_name,
+    average: generalAverage,
+    goalLabel: getGoalLabel(profile.post_bac_target),
+    streak: streak.current,
+  })
+
   const isSubscribed = Boolean(
     profile &&
       (profile.is_pro === true ||
@@ -481,6 +499,14 @@ export default function DashboardPage() {
             <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.2 rounded-full bg-primary-50 text-primary-700 border border-primary-200/80">
               {profile.class_level ? profile.class_level.toUpperCase() : 'TERMINALE GÉNÉRALE'}
             </span>
+            {streak.current >= 1 && (
+              <span
+                className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-orange-50 text-orange-700 border border-orange-200"
+                title={`Série la plus longue : ${streak.longest} jour${streak.longest > 1 ? 's' : ''}`}
+              >
+                <span>🔥 Série de {streak.current} jour{streak.current > 1 ? 's' : ''}</span>
+              </span>
+            )}
           </div>
           <p className="text-[10.5px] sm:text-[11.5px] text-text-secondary">
             {profile.school_name || 'Lycée Condorcet'} • Objectif :{' '}
@@ -508,6 +534,26 @@ export default function DashboardPage() {
                 <span>Passer Pro</span>
               </span>
             </Link>
+          )}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          FLASH DU MATIN : MESSAGE DE MOTIVATION PERSONNALISÉ
+          ═══════════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-primary-50 via-indigo-50/60 to-purple-50/60 border border-primary-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs flex items-start gap-2 sm:gap-2.5">
+        <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-2xs text-sm sm:text-base">
+          ☀️
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10.5px] sm:text-xs font-black text-text-primary">{motivation.greeting}</p>
+          <p className="text-[9.5px] sm:text-[10.5px] text-text-secondary leading-snug mt-0.2">
+            {motivation.phrase}
+          </p>
+          {motivation.averageLine && (
+            <p className="text-[9px] sm:text-[10px] font-bold text-primary-700 mt-1">
+              📊 {motivation.averageLine}
+            </p>
           )}
         </div>
       </div>

@@ -33,6 +33,12 @@ export interface Profile {
   email_notif_messages?: boolean
   email_notif_friends?: boolean
   email_notif_revisions?: boolean
+  email_notif_planning_reminder?: boolean
+  email_notif_grade_evolution?: boolean
+  current_streak?: number
+  longest_streak?: number
+  last_streak_date?: string | null
+  last_known_average?: number | null
   subscription_current_period_end?: string | null
   preferences: Record<string, unknown>
   created_at: string
