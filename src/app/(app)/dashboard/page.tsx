@@ -708,7 +708,7 @@ export default function DashboardPage() {
               isCurrentUserStudying={Boolean(mapUsers.find((u) => u.id === profile?.id)?.is_studying)}
               defaultCenter={[46.603354, 1.888334]}
               defaultZoom={5.0}
-              height="h-[220px] sm:h-[280px] lg:h-[340px]"
+              height="h-full"
               isLocked={!isSubscribed}
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}
