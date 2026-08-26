@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendNotificationEmail } from '@/lib/email'
 import type Stripe from 'stripe'
 
 // Initialize a direct Supabase Admin client with Service Role to bypass RLS during webhook handling
@@ -32,7 +33,7 @@ async function processReferralConversion(referredUserId: string) {
 
   const { data: referrerProfile } = await supabaseAdmin
     .from('profiles')
-    .select('stripe_customer_id, subscription_status, free_months_credit')
+    .select('email, full_name, stripe_customer_id, subscription_status, free_months_credit')
     .eq('id', referral.referrer_id)
     .single()
 
@@ -53,6 +54,16 @@ async function processReferralConversion(referredUserId: string) {
       const activeSub = subs.data[0]
       if (activeSub) {
         await stripe.subscriptions.update(activeSub.id, { discounts: [{ coupon: couponId }] })
+
+        if (referrerProfile.email) {
+          sendNotificationEmail(
+            referrerProfile.email,
+            'Ton mois offert est appliqué ! 🎁',
+            `Ton ami que tu as parrainé vient de passer Pro sur OptiNote. Ta récompense a été appliquée directement : ta prochaine facture sera réduite de 6,99 €. Merci d'avoir fait connaître OptiNote !`,
+            'Voir mon abonnement',
+            'https://optinote.fr/settings'
+          ).catch((err) => console.error('Error sending referral reward email:', err))
+        }
         return
       }
     } catch (err) {
@@ -66,6 +77,16 @@ async function processReferralConversion(referredUserId: string) {
     .from('profiles')
     .update({ free_months_credit: (referrerProfile.free_months_credit || 0) + 1 })
     .eq('id', referral.referrer_id)
+
+  if (referrerProfile.email) {
+    sendNotificationEmail(
+      referrerProfile.email,
+      'Tu as gagné un mois offert ! 🎁',
+      `Ton ami que tu as parrainé vient de passer Pro sur OptiNote. Ton mois offert t'attend : il s'appliquera automatiquement dès que tu passeras Pro à ton tour. Merci d'avoir fait connaître OptiNote !`,
+      'Découvrir l’offre Pro',
+      'https://optinote.fr/pricing'
+    ).catch((err) => console.error('Error sending referral reward email:', err))
+  }
 }
 
 export async function POST(request: NextRequest) {
