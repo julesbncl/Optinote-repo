@@ -1,4 +1,4 @@
-import { SPECIALTIES } from '@/lib/constants'
+import { OFFICIAL_SPECIALTIES } from '@/lib/curriculum'
 import { Check } from 'lucide-react'
 
 interface StepSpecialtiesProps {
@@ -7,20 +7,24 @@ interface StepSpecialtiesProps {
   onChange: (specialties: string[]) => void
 }
 
+// Stocke le nom affiché (ex: "Mathématiques"), pas un id interne — c'est ce
+// que lisent /settings, la carte du Campus et le générateur de programme
+// officiel. Utiliser un id ici causait un décompte et un affichage incohérents
+// dès que l'utilisateur rouvrait ses spécialités dans Paramètres.
 export function StepSpecialties({ level, selected, onChange }: StepSpecialtiesProps) {
   const isPremiere = level === 'premiere'
   const isTerminale = level === 'terminale'
   const maxSelections = isPremiere ? 3 : isTerminale ? 2 : 4
 
-  const toggleSpecialty = (id: string) => {
-    if (selected.includes(id)) {
-      onChange(selected.filter((s) => s !== id))
+  const toggleSpecialty = (name: string) => {
+    if (selected.includes(name)) {
+      onChange(selected.filter((s) => s !== name))
     } else {
       if (selected.length >= maxSelections) {
         // Replace oldest or keep max
-        onChange([...selected.slice(1), id])
+        onChange([...selected.slice(1), name])
       } else {
-        onChange([...selected, id])
+        onChange([...selected, name])
       }
     }
   }
@@ -42,14 +46,14 @@ export function StepSpecialties({ level, selected, onChange }: StepSpecialtiesPr
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1 no-scrollbar">
-        {SPECIALTIES.map((spec) => {
-          const isSelected = selected.includes(spec.id)
+        {OFFICIAL_SPECIALTIES.map((spec) => {
+          const isSelected = selected.includes(spec.name)
 
           return (
             <button
               key={spec.id}
               type="button"
-              onClick={() => toggleSpecialty(spec.id)}
+              onClick={() => toggleSpecialty(spec.name)}
               className={`p-3.5 rounded-xl border-2 text-left transition-all duration-200 cursor-pointer flex items-center justify-between ${
                 isSelected
                   ? 'border-primary-500 bg-primary-50/60 shadow-xs'
@@ -60,7 +64,7 @@ export function StepSpecialties({ level, selected, onChange }: StepSpecialtiesPr
                 <span className="text-xl flex-shrink-0">{spec.emoji}</span>
                 <div className="truncate">
                   <h4 className="font-bold text-sm text-text-primary truncate">
-                    {spec.label}
+                    {spec.name}
                   </h4>
                   <p className="text-xs text-text-tertiary truncate">
                     {spec.desc}

@@ -216,11 +216,16 @@ export default function SettingsPage() {
             setClassLevel(data.class_level || 'terminale')
             setSchoolName(data.school_name || '')
             setIsVisible(data.is_visible_on_school ?? true)
-            setSpecialties(
-              data.specialties && data.specialties.length > 0
-                ? data.specialties
-                : ['Mathématiques', 'Physique-Chimie']
-            )
+            // Ancien bug d'onboarding : certains profils ont des ids internes
+            // ("maths", "physique") au lieu du nom affiché ("Mathématiques") —
+            // ça faussait le décompte et l'affichage des cases cochées ici.
+            // On convertit à la volée pour corriger l'affichage immédiatement ;
+            // la prochaine sauvegarde persiste la version corrigée.
+            const normalizedSpecialties = (data.specialties || []).map((s: string) => {
+              const byId = OFFICIAL_SPECIALTIES.find((spec) => spec.id === s)
+              return byId ? byId.name : s
+            })
+            setSpecialties(Array.from(new Set(normalizedSpecialties)))
             setNotifPrefs({
               messages: data.email_notif_messages ?? true,
               friends: data.email_notif_friends ?? true,
@@ -259,14 +264,18 @@ export default function SettingsPage() {
   }, [supabase])
 
 
+  // Même règle qu'à l'onboarding : 3 spécialités en Première, 2 conservées en
+  // Terminale (réforme du Bac), 4 par défaut pour les autres niveaux.
+  const maxSpecialties = classLevel === 'premiere' ? 3 : classLevel === 'terminale' ? 2 : 4
+
   function toggleSpecialty(name: string) {
     if (specialties.includes(name)) {
       setSpecialties(specialties.filter((s) => s !== name))
     } else {
-      if (specialties.length < 3) {
+      if (specialties.length < maxSpecialties) {
         setSpecialties([...specialties, name])
       } else {
-        toast.error('Tu peux sélectionner au maximum 3 spécialités.')
+        toast.error(`Tu peux sélectionner au maximum ${maxSpecialties} spécialités.`)
       }
     }
   }
@@ -735,7 +744,7 @@ export default function SettingsPage() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">
-                Spécialités ({specialties.length}/3)
+                Spécialités ({specialties.length}/{maxSpecialties})
               </label>
               <span className="text-[9px] text-text-tertiary">
                 Clique pour ajouter ou retirer

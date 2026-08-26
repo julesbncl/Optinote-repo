@@ -36,7 +36,7 @@ function OnboardingFlow() {
 
   // Form State
   const [classLevel, setClassLevel] = useState('terminale')
-  const [specialties, setSpecialties] = useState<string[]>(['maths', 'physique'])
+  const [specialties, setSpecialties] = useState<string[]>(['Mathématiques', 'Physique-Chimie'])
   const [academicGoal, setAcademicGoal] = useState('progression')
   const [postBacTarget, setPostBacTarget] = useState('ingenieur')
   const [schoolId, setSchoolId] = useState<string | null>(null)
