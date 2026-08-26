@@ -43,27 +43,25 @@ interface DashboardData {
   schedule: Schedule | null
 }
 
-const DEFAULT_MOCK_PROFILE: Profile = {
-  id: 'mock-user-001',
-  email: 'thomas.dubois@lycee.fr',
-  full_name: 'Thomas Dubois',
+// Valeur initiale neutre le temps du premier chargement : jamais affichée à
+// l'écran, l'écran de chargement (skeleton) couvre systématiquement ce délai.
+const EMPTY_PROFILE: Profile = {
+  id: '',
+  email: '',
+  full_name: null,
   avatar_url: null,
-  class_level: 'terminale',
-  school_name: 'Lycée Henri IV',
+  class_level: null,
+  school_name: null,
   school_id: null,
-  specialties: ['Mathématiques', 'Physique-Chimie'],
-  academic_goal: 'excellence',
-  post_bac_target: 'ingenieur',
+  specialties: [],
+  academic_goal: null,
+  post_bac_target: null,
   is_visible_on_school: true,
   onboarding_completed: true,
   subscription_tier: 'free',
   subscription_status: 'inactive',
   subscription_current_period_end: null,
   preferences: {},
-  is_verified: true,
-  verification_status: 'verified',
-  latitude: 43.610769,
-  longitude: 3.876716,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -71,7 +69,7 @@ const DEFAULT_MOCK_PROFILE: Profile = {
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
-  const [profile, setProfile] = useState<Profile>(DEFAULT_MOCK_PROFILE)
+  const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(true)
@@ -374,57 +372,10 @@ export default function DashboardPage() {
             .catch((err) => console.warn('Error updating streak:', err))
 
           setData({
-            subjects: subjectsRes.data && subjectsRes.data.length > 0 ? subjectsRes.data : [
-              { id: 'sub-1', user_id: user.id, name: 'Mathématiques', coefficient: 5, color: '#6366F1', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-2', user_id: user.id, name: 'Physique-Chimie', coefficient: 4, color: '#8B5CF6', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-3', user_id: user.id, name: 'Philosophie', coefficient: 3, color: '#EC4899', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-4', user_id: user.id, name: 'Histoire-Géo', coefficient: 3, color: '#22C55E', teacher_name: null, created_at: new Date().toISOString() },
-            ],
-            grades: gradesRes.data && gradesRes.data.length > 0 ? gradesRes.data : [
-              { id: 'gr-1', user_id: user.id, subject_id: 'sub-1', value: 18, out_of: 20, coefficient: 1, trimester: 1, label: 'DS 1', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-2', user_id: user.id, subject_id: 'sub-1', value: 16, out_of: 20, coefficient: 1, trimester: 1, label: 'Interro', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-3', user_id: user.id, subject_id: 'sub-2', value: 15.5, out_of: 20, coefficient: 1, trimester: 1, label: 'TP', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-4', user_id: user.id, subject_id: 'sub-3', value: 14, out_of: 20, coefficient: 1, trimester: 1, label: 'Dissert', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-5', user_id: user.id, subject_id: 'sub-4', value: 16.5, out_of: 20, coefficient: 1, trimester: 1, label: 'Croquis', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-            ],
+            subjects: subjectsRes.data || [],
+            grades: gradesRes.data || [],
             recentSheets: sheetsRes.data || [],
             schedule: scheduleRes.data || null,
-          })
-        } else {
-          // Dev fallback
-          const [schoolsRes, usersRes] = await Promise.all([
-            fetch('/api/campus/schools'),
-            fetch('/api/campus/users/location'),
-          ])
-
-          if (schoolsRes.ok) {
-            const sData = await schoolsRes.json()
-            setSchools(sData.schools || [])
-          }
-
-          if (usersRes.ok) {
-            const uData = await usersRes.json()
-            setMapUsers(uData.users || [])
-          }
-
-          const localSheets = typeof window !== 'undefined' ? localStorage.getItem('optinote_sheets') : null
-
-          setData({
-            subjects: [
-              { id: 'sub-1', user_id: 'mock', name: 'Mathématiques', coefficient: 5, color: '#6366F1', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-2', user_id: 'mock', name: 'Physique-Chimie', coefficient: 4, color: '#8B5CF6', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-3', user_id: 'mock', name: 'Philosophie', coefficient: 3, color: '#EC4899', teacher_name: null, created_at: new Date().toISOString() },
-              { id: 'sub-4', user_id: 'mock', name: 'Histoire-Géo', coefficient: 3, color: '#22C55E', teacher_name: null, created_at: new Date().toISOString() },
-            ],
-            grades: [
-              { id: 'gr-1', user_id: 'mock', subject_id: 'sub-1', value: 18, out_of: 20, coefficient: 1, trimester: 1, label: 'DS 1', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-2', user_id: 'mock', subject_id: 'sub-1', value: 16, out_of: 20, coefficient: 1, trimester: 1, label: 'Interro', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-3', user_id: 'mock', subject_id: 'sub-2', value: 15.5, out_of: 20, coefficient: 1, trimester: 1, label: 'TP', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-4', user_id: 'mock', subject_id: 'sub-3', value: 14, out_of: 20, coefficient: 1, trimester: 1, label: 'Dissert', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-              { id: 'gr-5', user_id: 'mock', subject_id: 'sub-4', value: 16.5, out_of: 20, coefficient: 1, trimester: 1, label: 'Croquis', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-            ],
-            recentSheets: localSheets ? JSON.parse(localSheets) : [],
-            schedule: null,
           })
         }
       } catch (err) {
@@ -446,7 +397,7 @@ export default function DashboardPage() {
             coefficient: g.coefficient,
           }))
         )
-      : 16.0
+      : null
   const sheetsCount = data?.recentSheets ? data.recentSheets.length : 0
 
   const motivation = getMotivationalMessage({
@@ -489,7 +440,7 @@ export default function DashboardPage() {
         <div className="space-y-0.2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="text-sm sm:text-lg font-black text-text-primary tracking-tight flex items-center gap-1.5">
-              <span>Bonjour, {profile.full_name?.split(' ')[0] || 'Thomas'} 👋</span>
+              <span>Bonjour, {profile.full_name?.split(' ')[0] || 'Lycéen'} 👋</span>
               {profile.is_verified && (
                 <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 border border-blue-200" title="Compte Lycéen Certifié 🛡️">
                   <span>Certifié 🛡️</span>
@@ -509,7 +460,7 @@ export default function DashboardPage() {
             )}
           </div>
           <p className="text-[10.5px] sm:text-[11.5px] text-text-secondary">
-            {profile.school_name || 'Lycée Condorcet'} • Objectif :{' '}
+            {profile.school_name || 'Aucun lycée renseigné'} • Objectif :{' '}
             <span className="font-semibold text-text-primary">
               {profile.post_bac_target === 'ingenieur'
                 ? 'CPGE MPSI / Ingénieur 🚀'
@@ -582,10 +533,12 @@ export default function DashboardPage() {
 
           <div className="my-0.5 sm:my-1">
             <p className="text-lg sm:text-2xl font-black text-text-primary tracking-tight">
-              {generalAverage !== null ? `${generalAverage}/20` : '16.0/20'}
+              {generalAverage !== null ? `${generalAverage}/20` : '—'}
             </p>
             <p className="text-[8.5px] sm:text-[9.5px] text-text-tertiary">
-              Calculée sur {data?.grades.length || 5} notes pondérées (Trimestre 1)
+              {data?.grades.length
+                ? `Calculée sur ${data.grades.length} note${data.grades.length > 1 ? 's' : ''} pondérée${data.grades.length > 1 ? 's' : ''}`
+                : 'Ajoute ta première note pour voir ta moyenne'}
             </p>
           </div>
 
@@ -655,7 +608,7 @@ export default function DashboardPage() {
               </span>
               <span className="text-[7px] sm:text-[8px] font-bold text-primary-700/90 mt-0.2 flex items-center gap-0.5">
                 <FolderOpen className="h-1.5 w-1.5 sm:h-2 sm:w-2 text-primary-500" />
-                4 matières
+                {data?.subjects.length || 0} matière{(data?.subjects.length || 0) > 1 ? 's' : ''}
               </span>
             </Link>
           </div>

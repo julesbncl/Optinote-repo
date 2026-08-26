@@ -128,7 +128,17 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Routes protégées — redirection des utilisateurs non connectés
-  const protectedPaths = ['/dashboard', '/campus', '/grades', '/planning', '/revision', '/settings', '/messages']
+  const protectedPaths = [
+    '/dashboard',
+    '/campus',
+    '/grades',
+    '/planning',
+    '/revision',
+    '/settings',
+    '/messages',
+    '/admin',
+    '/onboarding',
+  ]
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {
@@ -172,4 +182,3 @@ export async function updateSession(request: NextRequest) {
 
   return supabaseResponse
 }
-

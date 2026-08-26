@@ -33,21 +33,6 @@ import { EditableCoefficientBadge } from '@/components/grades/EditableCoefficien
 import { SUBJECT_SUGGESTIONS, type OfficialSubjectTemplate } from '@/lib/curriculum'
 import Link from 'next/link'
 
-const DEFAULT_SUBJECTS: Subject[] = [
-  { id: 'sub-1', user_id: 'mock', name: 'Mathématiques', coefficient: 5, color: '#6366F1', teacher_name: 'M. Roche', created_at: new Date().toISOString() },
-  { id: 'sub-2', user_id: 'mock', name: 'Physique-Chimie', coefficient: 4, color: '#8B5CF6', teacher_name: 'Mme Laurent', created_at: new Date().toISOString() },
-  { id: 'sub-3', user_id: 'mock', name: 'Philosophie', coefficient: 3, color: '#EC4899', teacher_name: 'M. Mercier', created_at: new Date().toISOString() },
-  { id: 'sub-4', user_id: 'mock', name: 'Histoire-Géographie', coefficient: 3, color: '#22C55E', teacher_name: 'Mme Bernard', created_at: new Date().toISOString() },
-]
-
-const DEFAULT_GRADES: Grade[] = [
-  { id: 'gr-1', user_id: 'mock', subject_id: 'sub-1', value: 18, out_of: 20, coefficient: 1, trimester: 1, label: 'DS Limites & Continuité', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-  { id: 'gr-2', user_id: 'mock', subject_id: 'sub-1', value: 16, out_of: 20, coefficient: 1, trimester: 1, label: 'Interro Dérivées', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-  { id: 'gr-3', user_id: 'mock', subject_id: 'sub-2', value: 15.5, out_of: 20, coefficient: 1, trimester: 1, label: 'TP Oxydoréduction', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-  { id: 'gr-4', user_id: 'mock', subject_id: 'sub-3', value: 14, out_of: 20, coefficient: 1, trimester: 1, label: 'Dissertation La Vérité', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-  { id: 'gr-5', user_id: 'mock', subject_id: 'sub-4', value: 16.5, out_of: 20, coefficient: 1, trimester: 1, label: 'Croquis Géopolitique', date: new Date().toISOString(), is_simulated: false, created_at: new Date().toISOString() },
-]
-
 export default function GradesPage() {
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -77,27 +62,23 @@ export default function GradesPage() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (user) {
-        const [profileRes, subjectsRes, gradesRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', user.id).single(),
-          supabase.from('subjects').select('*').eq('user_id', user.id).order('name'),
-          supabase.from('grades').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-        ])
-
-        if (profileRes.data) setProfile(profileRes.data)
-        setSubjects(subjectsRes.data && subjectsRes.data.length > 0 ? subjectsRes.data : DEFAULT_SUBJECTS)
-        setGrades(gradesRes.data && gradesRes.data.length > 0 ? gradesRes.data : DEFAULT_GRADES)
-      } else {
-        // LocalStorage fallback for dev bypass mode
-        const localSubs = localStorage.getItem('optinote_subjects')
-        const localGrades = localStorage.getItem('optinote_grades')
-
-        setSubjects(localSubs ? JSON.parse(localSubs) : DEFAULT_SUBJECTS)
-        setGrades(localGrades ? JSON.parse(localGrades) : DEFAULT_GRADES)
+      if (!user) {
+        setLoading(false)
+        return
       }
-    } catch {
-      setSubjects(DEFAULT_SUBJECTS)
-      setGrades(DEFAULT_GRADES)
+
+      const [profileRes, subjectsRes, gradesRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('subjects').select('*').eq('user_id', user.id).order('name'),
+        supabase.from('grades').select('*').eq('user_id', user.id).order('date', { ascending: false }),
+      ])
+
+      if (profileRes.data) setProfile(profileRes.data)
+      setSubjects(subjectsRes.data || [])
+      setGrades(gradesRes.data || [])
+    } catch (err) {
+      console.error('Error loading grades data:', err)
+      toast.error('Erreur lors du chargement de tes notes')
     } finally {
       setLoading(false)
     }

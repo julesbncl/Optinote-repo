@@ -10,28 +10,6 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { Header } from '@/components/layout/Header'
 import type { Profile } from '@/types/database'
 
-export const DEFAULT_MOCK_PROFILE: Profile = {
-  id: 'mock-user-001',
-  email: 'thomas.dubois@lycee.fr',
-  full_name: 'Thomas Dubois',
-  avatar_url: null,
-  class_level: 'terminale',
-  school_name: 'Lycée Henri IV',
-  school_id: null,
-  specialties: ['Mathématiques', 'Physique-Chimie'],
-  academic_goal: 'excellence',
-  post_bac_target: 'ingenieur',
-  is_visible_on_school: true,
-  onboarding_completed: true,
-  subscription_tier: 'free',
-  subscription_status: 'inactive',
-  is_pro: false,
-  subscription_current_period_end: null,
-  preferences: {},
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
-
 export default function AppLayout({
   children,
 }: {
@@ -45,40 +23,33 @@ export default function AppLayout({
 
   useEffect(() => {
     async function fetchProfile(userId: string) {
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-        if (data) {
-          setProfile(data)
-        } else {
-          setProfile(DEFAULT_MOCK_PROFILE)
-        }
-      } catch (error) {
-        console.warn('Utilisation du profil mocké en mode dev:', error)
-        setProfile(DEFAULT_MOCK_PROFILE)
+      if (data) {
+        setProfile(data)
+      } else {
+        console.error('Error fetching profile:', error)
+        router.push('/login')
       }
     }
 
     async function loadProfile() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-        if (user) {
-          await fetchProfile(user.id)
-        } else {
-          setProfile(DEFAULT_MOCK_PROFILE)
-        }
-      } catch (error) {
-        console.warn('Utilisation du profil mocké en mode dev:', error)
-      } finally {
-        setLoading(false)
+      if (user) {
+        await fetchProfile(user.id)
+      } else {
+        // Le proxy d'authentification (src/proxy.ts) protège déjà ces routes ;
+        // ce cas ne devrait survenir qu'en cas d'expiration de session en cours de visite.
+        router.push('/login')
       }
+      setLoading(false)
     }
 
     loadProfile()
@@ -90,14 +61,14 @@ export default function AppLayout({
       if (session?.user) {
         await fetchProfile(session.user.id)
       } else if (event === 'SIGNED_OUT') {
-        setProfile(DEFAULT_MOCK_PROFILE)
+        router.push('/login')
       }
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [supabase, router])
 
   // Badge de notification sur l'onglet Campus : demandes d'amis en attente + messages non lus
   useEffect(() => {
