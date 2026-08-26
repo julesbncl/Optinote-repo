@@ -14,8 +14,10 @@ import {
   ChevronDown,
   Tag,
   Check,
+  Settings as SettingsIcon,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
+import { createClient } from '@/lib/supabase/client'
 import {
   PRICING_PLANS,
   VALID_PROMO_CODES,
@@ -28,9 +30,86 @@ import toast from 'react-hot-toast'
 function PricingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const supabase = createClient()
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+
+  // Abonnement actuel de l'utilisateur connecté (si connecté et abonné)
+  const [currentTier, setCurrentTier] = useState<'monthly' | 'annual' | null>(null)
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null)
+  const [changingPlan, setChangingPlan] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  useEffect(() => {
+    async function loadSubscriptionState() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_pro, subscription_tier, subscription_status, subscription_current_period_end')
+        .eq('id', user.id)
+        .single()
+
+      const isSubscribed = Boolean(
+        profile &&
+          (profile.is_pro === true ||
+            (['active', 'trialing'].includes(profile.subscription_status || '') &&
+              (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
+      )
+
+      if (isSubscribed && profile) {
+        const tier = profile.subscription_tier === 'annual' ? 'annual' : 'monthly'
+        setCurrentTier(tier)
+        setBillingCycle(tier)
+        setPeriodEnd(profile.subscription_current_period_end || null)
+      }
+    }
+
+    loadSubscriptionState()
+  }, [supabase])
+
+  async function handleChangePlan(planId: 'monthly' | 'annual') {
+    setChangingPlan(true)
+    try {
+      const res = await fetch('/api/stripe/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors du changement de formule')
+      }
+      toast.success(data.message || 'Formule mise à jour ! 🎉')
+      setCurrentTier(planId)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors du changement de formule'
+      toast.error(message)
+    } finally {
+      setChangingPlan(false)
+    }
+  }
+
+  async function handleOpenBillingPortal() {
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error(data.error || 'Erreur d’accès au portail de facturation')
+      }
+    } catch {
+      toast.error('Erreur d’accès au portail de facturation')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
 
   // Gestion du code promo d'affiliation (-15%)
   const [promoInput, setPromoInput] = useState('')
@@ -272,6 +351,31 @@ function PricingContent() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════
+              BANDEAU ABONNEMENT ACTUEL (utilisateur déjà abonné)
+              ═══════════════════════════════════════════════════════ */}
+          {currentTier && (
+            <div className="mt-3 sm:mt-5 max-w-sm mx-auto flex items-center justify-between gap-2 p-2 sm:p-2.5 bg-primary-50 border border-primary-200 rounded-xl text-primary-900 text-[10.5px] sm:text-xs font-bold shadow-xs">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+                <span>
+                  Abonné {currentTier === 'annual' ? 'Annuel' : 'Mensuel'}
+                  {periodEnd &&
+                    ` · renouvellement le ${new Date(periodEnd).toLocaleDateString('fr-FR')}`}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={handleOpenBillingPortal}
+                disabled={portalLoading}
+                className="flex items-center gap-1 text-[9.5px] sm:text-[10.5px] font-bold text-primary-700 hover:text-primary-800 underline cursor-pointer flex-shrink-0 disabled:opacity-60"
+              >
+                <SettingsIcon className="h-3 w-3" />
+                <span>Facturation</span>
+              </button>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════
               GRILLE DES TARIFS CÔTE À CÔTE SUR MOBILE & PC
               ═══════════════════════════════════════════════════════ */}
           <div className="mt-3.5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 items-stretch text-left max-w-5xl mx-auto">
@@ -344,14 +448,20 @@ function PricingContent() {
 
               {/* CTA Button */}
               <div className="mt-3 sm:mt-6 pt-1 sm:pt-3">
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('free')}
-                  className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-lg sm:rounded-xl transition-all cursor-pointer"
-                >
-                  <span>Commencer</span>
-                  <ArrowRight className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-                </button>
+                {currentTier ? (
+                  <div className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-text-tertiary bg-surface-secondary border border-border rounded-lg sm:rounded-xl">
+                    <span>Formule Pro active</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPlan('free')}
+                    className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-lg sm:rounded-xl transition-all cursor-pointer"
+                  >
+                    <span>Commencer</span>
+                    <ArrowRight className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -432,21 +542,41 @@ function PricingContent() {
 
               {/* CTA Button */}
               <div className="mt-3 sm:mt-6 pt-1 sm:pt-3">
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan(billingCycle)}
-                  disabled={loadingPlan !== null}
-                  className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-white bg-gradient-to-r from-primary-600 via-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer"
-                >
-                  {loadingPlan === billingCycle ? (
-                    <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Choisir Pro ({billingCycle === 'annual' ? currentAnnualDisplay : currentMonthlyDisplay})</span>
-                      <ArrowRight className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-                    </>
-                  )}
-                </button>
+                {currentTier === billingCycle ? (
+                  <div className="w-full inline-flex items-center justify-center gap-1.5 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl">
+                    <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span>Ta formule actuelle</span>
+                  </div>
+                ) : currentTier ? (
+                  <button
+                    type="button"
+                    onClick={() => handleChangePlan(billingCycle)}
+                    disabled={changingPlan}
+                    className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-white bg-gradient-to-r from-primary-600 via-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-70"
+                  >
+                    {changingPlan ? (
+                      <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span>Passer {billingCycle === 'annual' ? "à l'Annuel" : 'au Mensuel'}</span>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPlan(billingCycle)}
+                    disabled={loadingPlan !== null}
+                    className="w-full inline-flex items-center justify-center gap-1 h-7 sm:h-10 text-[9px] sm:text-xs font-bold text-white bg-gradient-to-r from-primary-600 via-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer"
+                  >
+                    {loadingPlan === billingCycle ? (
+                      <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Choisir Pro ({billingCycle === 'annual' ? currentAnnualDisplay : currentMonthlyDisplay})</span>
+                        <ArrowRight className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -501,15 +631,31 @@ function PricingContent() {
               </div>
 
               <div className="mt-6 pt-3">
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('monthly')}
-                  disabled={loadingPlan !== null}
-                  className="w-full inline-flex items-center justify-center gap-1 h-10 text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-xl transition-all cursor-pointer"
-                >
-                  <span>Choisir le Mensuel ({currentMonthlyDisplay})</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                {currentTier === 'monthly' ? (
+                  <div className="w-full inline-flex items-center justify-center gap-1.5 h-10 text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200 rounded-xl">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Ta formule actuelle</span>
+                  </div>
+                ) : currentTier === 'annual' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleChangePlan('monthly')}
+                    disabled={changingPlan}
+                    className="w-full inline-flex items-center justify-center gap-1 h-10 text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-xl transition-all cursor-pointer disabled:opacity-70"
+                  >
+                    <span>Passer au Mensuel</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPlan('monthly')}
+                    disabled={loadingPlan !== null}
+                    className="w-full inline-flex items-center justify-center gap-1 h-10 text-xs font-bold text-text-primary bg-surface hover:bg-surface-secondary border border-border rounded-xl transition-all cursor-pointer"
+                  >
+                    <span>Choisir le Mensuel ({currentMonthlyDisplay})</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

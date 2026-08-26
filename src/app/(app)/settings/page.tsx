@@ -76,7 +76,6 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingCertificate, setUploadingCertificate] = useState(false)
-  const [portalLoading, setPortalLoading] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [notifPrefs, setNotifPrefs] = useState({
     messages: true,
@@ -480,23 +479,6 @@ export default function SettingsPage() {
       toast.error('Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function handleManageBilling() {
-    setPortalLoading(true)
-    try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        router.push('/pricing')
-      }
-    } catch {
-      toast.error('Erreur d’accès au portail Stripe')
-    } finally {
-      setPortalLoading(false)
     }
   }
 
@@ -1268,8 +1250,7 @@ export default function SettingsPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={handleManageBilling}
-                  isLoading={portalLoading}
+                  onClick={() => router.push('/pricing')}
                   className="w-full text-[10px] font-bold h-7"
                 >
                   Gérer mon abonnement
