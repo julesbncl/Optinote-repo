@@ -58,10 +58,23 @@ export default function TermsPage() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold text-text-primary">
-              3. Gratuité & Accès au Service
+              3. Accès Gratuit & Abonnement Payant
             </h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              L&apos;accès aux fonctionnalités essentielles du MVP est mis à disposition des élèves. Un usage abusif ou automatisé (spams, attaques par déni de service) pourra entraîner la suspension immédiate du compte via notre système de limitation de requêtes (Rate Limiting).
+              OptiNote propose une version d&apos;essai gratuite aux fonctionnalités limitées, ainsi qu&apos;un abonnement payant <strong>OptiNote Pro</strong> donnant accès à l&apos;intégralité des fonctionnalités, au tarif de <strong>6,99&nbsp;€/mois</strong> (sans engagement) ou <strong>59,88&nbsp;€/an</strong> (facturé en une fois). Les tarifs à jour sont toujours affichés sur la page{' '}
+              <Link href="/pricing" className="text-primary-600 hover:underline font-semibold">optinote.fr/pricing</Link>.
+            </p>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Les paiements sont traités par notre prestataire <strong>Stripe</strong>, certifié PCI-DSS niveau 1 ; OptiNote ne stocke ni ne manipule directement aucune donnée bancaire. L&apos;abonnement mensuel est résiliable à tout moment depuis l&apos;espace Paramètres, sans frais ni justification, et reste actif jusqu&apos;à la fin de la période déjà payée.
+            </p>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              <strong>Droit de rétractation :</strong> conformément à l&apos;article L221-18 du Code de la consommation, tu disposes d&apos;un délai de 14 jours pour exercer ton droit de rétractation sur un abonnement payant. En souscrivant, tu demandes expressément l&apos;accès immédiat au service ; si tu utilises activement les fonctionnalités Pro pendant ce délai, tu reconnais renoncer à ce droit pour la période déjà consommée, conformément à l&apos;article L221-28 du même code.
+            </p>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              <strong>Utilisateurs mineurs :</strong> OptiNote s&apos;adresse principalement à des lycéens mineurs. La souscription à une offre payante suppose la capacité juridique de contracter ou, à défaut, l&apos;autorisation et la validation du paiement par un représentant légal (parent ou tuteur). En procédant au paiement, tu certifies disposer de cette autorisation.
+            </p>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Un usage abusif ou automatisé (spams, attaques par déni de service) pourra entraîner la suspension immédiate du compte via notre système de limitation de requêtes (Rate Limiting).
             </p>
           </section>
         </div>

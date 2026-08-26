@@ -70,7 +70,14 @@ export default function PrivacyPolicyPage() {
               4. Vos Droits (RGPD)
             </h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez d&apos;un droit d&apos;accès, de rectification, de portabilité et de suppression de toutes vos données personnelles sur simple demande à <strong>dpo@optinote.fr</strong> ou depuis votre espace Paramètres.
+              Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez d&apos;un droit d&apos;accès, de rectification, de portabilité et de suppression de toutes vos données personnelles. Deux actions en libre-service sont disponibles directement depuis votre espace <strong>Paramètres</strong> :
+            </p>
+            <ul className="list-disc list-inside text-sm text-text-secondary space-y-1.5 pl-2">
+              <li><strong>Exporter mes données</strong> : télécharge l&apos;intégralité de tes données personnelles (profil, notes, fiches, planning, amis, messages) au format JSON.</li>
+              <li><strong>Supprimer mon compte</strong> : efface définitivement et immédiatement ton compte et toutes les données associées. Cette action résilie automatiquement tout abonnement Pro actif.</li>
+            </ul>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Pour toute autre demande relative à tes données (rectification, question, réclamation), écris-nous à <strong>contact@optinote.fr</strong>.
             </p>
           </section>
         </div>

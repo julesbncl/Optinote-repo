@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
+import { Modal } from '@/components/ui/Modal'
 import { CLASS_LEVELS } from '@/lib/constants'
 import { OFFICIAL_SPECIALTIES } from '@/lib/curriculum'
 import {
@@ -35,6 +36,9 @@ import {
   Trophy,
   Gift,
   Copy,
+  Download,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -511,6 +515,56 @@ export default function SettingsPage() {
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/')
+  }
+
+  const [exportingData, setExportingData] = useState(false)
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
+
+  async function handleExportData() {
+    setExportingData(true)
+    try {
+      const res = await fetch('/api/account/export')
+      if (!res.ok) {
+        toast.error('Erreur lors de l’export de tes données')
+        return
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `optinote-mes-donnees-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Tes données ont été téléchargées 📦')
+    } catch {
+      toast.error('Erreur lors de l’export de tes données')
+    } finally {
+      setExportingData(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'SUPPRIMER') return
+    setDeletingAccount(true)
+    try {
+      const res = await fetch('/api/account/delete', { method: 'POST' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error || 'Erreur lors de la suppression du compte')
+        setDeletingAccount(false)
+        return
+      }
+      await supabase.auth.signOut()
+      toast.success('Ton compte a été supprimé.')
+      router.push('/')
+    } catch {
+      toast.error('Erreur lors de la suppression du compte')
+      setDeletingAccount(false)
+    }
   }
 
   if (loading) {
@@ -1316,6 +1370,93 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Card>
+
+      {/* ═══════════════════════════════════════════════════════
+          MES DONNÉES (RGPD : export & suppression)
+          ═══════════════════════════════════════════════════════ */}
+      <Card className="p-2.5 sm:p-3 space-y-2.5">
+        <div className="flex items-center gap-1.5 pb-1 border-b border-border">
+          <Shield className="h-3.5 w-3.5 text-primary-600" />
+          <h2 className="text-xs sm:text-sm font-bold text-text-primary">Mes données</h2>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+          <div>
+            <p className="text-[10px] font-bold text-text-primary">Exporter mes données</p>
+            <p className="text-[8.5px] text-text-secondary leading-snug">
+              Télécharge toutes tes données (notes, fiches, planning, amis...) au format JSON.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleExportData}
+            disabled={exportingData}
+            className="w-full sm:w-auto h-10 px-4 rounded-xl bg-surface hover:bg-surface-secondary border border-border text-text-primary text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all disabled:opacity-60 flex-shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>{exportingData ? 'Export...' : 'Exporter'}</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-red-50/60 rounded-xl border border-red-200">
+          <div>
+            <p className="text-[10px] font-bold text-red-900">Supprimer mon compte</p>
+            <p className="text-[8.5px] text-red-800/80 leading-snug">
+              Action définitive et irréversible : toutes tes données seront effacées.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDeleteAccountModal(true)}
+            className="w-full sm:w-auto h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all flex-shrink-0"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Supprimer</span>
+          </button>
+        </div>
+      </Card>
+
+      <Modal
+        isOpen={showDeleteAccountModal}
+        onClose={() => {
+          setShowDeleteAccountModal(false)
+          setDeleteConfirmText('')
+        }}
+        title="Supprimer définitivement ton compte"
+      >
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200">
+            <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-red-900 leading-snug">
+              Toutes tes notes, fiches, plannings, amis et messages seront effacés définitivement.
+              Si tu as un abonnement Pro actif, il sera automatiquement résilié. Cette action est
+              irréversible.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-[10.5px] font-bold text-text-primary">
+              Tape <span className="font-mono bg-surface-secondary px-1 rounded">SUPPRIMER</span> pour confirmer
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="w-full mt-1.5 h-10 px-3 rounded-xl bg-surface border border-border text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-red-400"
+              placeholder="SUPPRIMER"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={deleteConfirmText !== 'SUPPRIMER' || deletingAccount}
+            className="w-full h-11 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-all cursor-pointer"
+          >
+            {deletingAccount ? 'Suppression...' : 'Supprimer définitivement mon compte'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
