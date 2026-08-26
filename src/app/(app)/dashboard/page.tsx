@@ -9,6 +9,7 @@ import { calculateWeightedAverage } from '@/lib/utils'
 import { SchoolMap } from '@/components/campus/SchoolMap'
 import { DashboardPlanningGrid } from '@/components/dashboard/DashboardPlanningGrid'
 import { getMotivationalMessage, getGoalLabel } from '@/lib/motivation'
+import { ProWelcomeModal } from '@/components/dashboard/ProWelcomeModal'
 import {
   CalendarDays,
   GraduationCap,
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(true)
   const [streak, setStreak] = useState({ current: 0, longest: 0 })
+  const [showProWelcomeModal, setShowProWelcomeModal] = useState(false)
 
   // États liés aux amis (pour afficher le bon statut dans "Camarades de spécialité")
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
@@ -316,9 +318,7 @@ export default function DashboardPage() {
                   .then((r) => r.json())
                   .then((res) => {
                     if (res.success) {
-                      toast.success('🎉 Félicitations ! Ton abonnement OptiNote Pro est actif !', {
-                        duration: 6000,
-                      })
+                      setShowProWelcomeModal(true)
                       supabase
                         .from('profiles')
                         .select('*')
@@ -335,9 +335,7 @@ export default function DashboardPage() {
                   .then((r) => r.json())
                   .then((res) => {
                     if (res.is_pro) {
-                      toast.success('🎉 Félicitations ! Ton abonnement OptiNote Pro est actif !', {
-                        duration: 6000,
-                      })
+                      setShowProWelcomeModal(true)
                       if (res.profile) setProfile(res.profile)
                     }
                   })
@@ -901,6 +899,8 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <ProWelcomeModal isOpen={showProWelcomeModal} onClose={() => setShowProWelcomeModal(false)} />
     </div>
   )
 }

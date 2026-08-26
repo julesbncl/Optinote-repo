@@ -28,10 +28,20 @@ export default function ErrorBoundary({
         Pas d&apos;inquiétude, tes données sont protégées. Clique sur le bouton ci-dessous pour réessayer.
       </p>
 
-      <div className="mt-6">
-        <Button onClick={() => reset()} leftIcon={<RefreshCw className="h-4 w-4" />}>
+      <div className="mt-6 flex flex-col sm:flex-row items-center gap-2 w-full max-w-xs sm:max-w-none sm:w-auto">
+        <Button
+          onClick={() => reset()}
+          leftIcon={<RefreshCw className="h-4 w-4" />}
+          className="w-full sm:w-auto"
+        >
           Réessayer
         </Button>
+        <a
+          href="/dashboard"
+          className="w-full sm:w-auto h-10 px-5 rounded-xl bg-surface hover:bg-surface-secondary border border-border text-text-primary text-sm font-bold flex items-center justify-center transition-all"
+        >
+          Retour à l&apos;accueil
+        </a>
       </div>
     </div>
   )

@@ -14,6 +14,9 @@ import {
   X,
   FileWarning,
   Flag,
+  MessageCircle,
+  Bug,
+  Lightbulb,
 } from 'lucide-react'
 
 interface PendingVerification {
@@ -43,6 +46,22 @@ interface MessageReport {
   } | null
 }
 
+interface FeedbackEntry {
+  id: string
+  type: 'bug' | 'idea' | 'other'
+  message: string
+  page_url: string | null
+  status: 'new' | 'reviewed'
+  created_at: string
+  profiles: { full_name: string | null; email: string } | null
+}
+
+const FEEDBACK_TYPE_LABELS: Record<string, { label: string; icon: typeof Bug }> = {
+  bug: { label: 'Bug', icon: Bug },
+  idea: { label: 'Idée', icon: Lightbulb },
+  other: { label: 'Autre', icon: MessageCircle },
+}
+
 const REASON_LABELS: Record<string, string> = {
   harcelement: 'Harcèlement',
   propos_inappropries: 'Propos inappropriés',
@@ -59,6 +78,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [verifications, setVerifications] = useState<PendingVerification[]>([])
   const [reports, setReports] = useState<MessageReport[]>([])
+  const [feedbackEntries, setFeedbackEntries] = useState<FeedbackEntry[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -95,9 +115,10 @@ export default function AdminPage() {
 
     async function loadData() {
       try {
-        const [verifRes, reportsRes] = await Promise.all([
+        const [verifRes, reportsRes, feedbackRes] = await Promise.all([
           fetch('/api/admin/verifications'),
           fetch('/api/admin/reports'),
+          fetch('/api/admin/feedback'),
         ])
         if (verifRes.ok) {
           const data = await verifRes.json()
@@ -106,6 +127,10 @@ export default function AdminPage() {
         if (reportsRes.ok) {
           const data = await reportsRes.json()
           setReports((data.reports || []).filter((r: MessageReport) => r.status === 'pending'))
+        }
+        if (feedbackRes.ok) {
+          const data = await feedbackRes.json()
+          setFeedbackEntries((data.feedback || []).filter((f: FeedbackEntry) => f.status === 'new'))
         }
       } catch (err) {
         console.error(err)
@@ -155,6 +180,29 @@ export default function AdminPage() {
       }
       setReports((prev) => prev.filter((r) => r.id !== reportId))
       toast.success(status === 'reviewed' ? 'Signalement traité' : 'Signalement classé sans suite')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de la mise à jour')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  async function handleFeedbackDecision(feedbackId: string) {
+    setProcessingId(feedbackId)
+    try {
+      const res = await fetch('/api/admin/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedbackId, status: 'reviewed' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de la mise à jour')
+        return
+      }
+      setFeedbackEntries((prev) => prev.filter((f) => f.id !== feedbackId))
+      toast.success('Retour marqué comme traité')
     } catch (err) {
       console.error(err)
       toast.error('Erreur lors de la mise à jour')
@@ -323,6 +371,63 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Retours utilisateurs (bugs / idées) */}
+          <Card className="p-3.5 space-y-2.5">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <MessageCircle className="h-4 w-4 text-primary-600" />
+              <h2 className="text-sm font-bold text-text-primary">
+                Retours utilisateurs ({feedbackEntries.length})
+              </h2>
+            </div>
+
+            {feedbackEntries.length === 0 ? (
+              <p className="text-xs text-text-tertiary py-3 text-center">
+                Aucun retour en attente.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {feedbackEntries.map((f) => {
+                  const typeInfo = FEEDBACK_TYPE_LABELS[f.type] || FEEDBACK_TYPE_LABELS.other
+                  const TypeIcon = typeInfo.icon
+                  return (
+                    <div key={f.id} className="p-3 rounded-xl border border-border bg-surface-secondary/40 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 flex items-center gap-1">
+                          <TypeIcon className="h-3 w-3" />
+                          {typeInfo.label}
+                        </span>
+                        <span className="text-[10px] text-text-tertiary">
+                          {new Date(f.created_at).toLocaleString('fr-FR')}
+                        </span>
+                      </div>
+
+                      <p className="text-[10.5px] text-text-secondary">
+                        Par <strong>{f.profiles?.full_name || f.profiles?.email || 'inconnu'}</strong>
+                        {f.page_url && <> • page <code className="text-[10px]">{f.page_url}</code></>}
+                      </p>
+
+                      <p className="text-xs text-text-primary bg-surface p-2 rounded-lg border border-border/80 whitespace-pre-wrap">
+                        {f.message}
+                      </p>
+
+                      <div className="flex items-center justify-end">
+                        <Button
+                          size="sm"
+                          disabled={processingId === f.id}
+                          onClick={() => handleFeedbackDecision(f.id)}
+                          className="gap-1"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          Marquer traité
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </Card>

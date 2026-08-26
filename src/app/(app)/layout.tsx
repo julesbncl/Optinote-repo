@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Header } from '@/components/layout/Header'
+import { FeedbackButton } from '@/components/layout/FeedbackButton'
 import type { Profile } from '@/types/database'
 
 export default function AppLayout({
@@ -147,6 +148,9 @@ export default function AppLayout({
 
       {/* Mobile Bottom Navigation */}
       <BottomNav profile={profile} campusBadgeCount={campusBadgeCount} />
+
+      {/* Canal de retour permanent (bug / avis) */}
+      <FeedbackButton />
     </div>
   )
 }
