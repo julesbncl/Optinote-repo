@@ -115,11 +115,11 @@ export default function PlanningPage() {
 
   async function handleSaveSlot(e: React.FormEvent) {
     e.preventDefault()
-    if (!activeSchedule || !editingSlot) return
+    if (!editingSlot) return
 
     setSavingSlot(true)
     try {
-      const rawPlan = (activeSchedule.generated_plan as Array<any>) || []
+      const rawPlan = (activeSchedule?.generated_plan as Array<any>) || []
       let newPlan: any[]
       const resolvedSubject =
         editingSlot.type === 'other' && editingSlot.activity
@@ -170,25 +170,33 @@ export default function PlanningPage() {
         return a.startTime.localeCompare(b.startTime)
       })
 
-      const updated = {
-        ...activeSchedule,
-        generated_plan: newPlan,
-      }
-      setActiveSchedule(updated)
-
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (user && activeSchedule.id && !activeSchedule.id.startsWith('sched-mock')) {
-        await supabase
+      if (user) {
+        const weekStart = activeSchedule?.week_start || new Date().toISOString().split('T')[0]
+        const { data: saved, error } = await supabase
           .from('schedules')
-          .update({
-            generated_plan: newPlan,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', activeSchedule.id)
+          .upsert(
+            {
+              user_id: user.id,
+              week_start: weekStart,
+              generated_plan: newPlan,
+              homework: activeSchedule?.homework || [],
+              constraints: activeSchedule?.constraints || {},
+              status: 'active',
+            },
+            { onConflict: 'user_id,week_start' }
+          )
+          .select()
+          .single()
+
+        if (error) throw error
+        setActiveSchedule(saved)
       } else {
+        const updated = { ...activeSchedule, generated_plan: newPlan } as Schedule
+        setActiveSchedule(updated)
         localStorage.setItem('optinote_schedule', JSON.stringify(updated))
       }
 
@@ -209,25 +217,33 @@ export default function PlanningPage() {
       const rawPlan = (activeSchedule.generated_plan as Array<any>) || []
       const newPlan = rawPlan.filter((_, idx) => idx !== slotIndex)
 
-      const updated = {
-        ...activeSchedule,
-        generated_plan: newPlan,
-      }
-      setActiveSchedule(updated)
-
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (user && activeSchedule.id && !activeSchedule.id.startsWith('sched-mock')) {
-        await supabase
+      if (user) {
+        const weekStart = activeSchedule.week_start || new Date().toISOString().split('T')[0]
+        const { data: saved, error } = await supabase
           .from('schedules')
-          .update({
-            generated_plan: newPlan,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', activeSchedule.id)
+          .upsert(
+            {
+              user_id: user.id,
+              week_start: weekStart,
+              generated_plan: newPlan,
+              homework: activeSchedule.homework || [],
+              constraints: activeSchedule.constraints || {},
+              status: 'active',
+            },
+            { onConflict: 'user_id,week_start' }
+          )
+          .select()
+          .single()
+
+        if (error) throw error
+        setActiveSchedule(saved)
       } else {
+        const updated = { ...activeSchedule, generated_plan: newPlan }
+        setActiveSchedule(updated)
         localStorage.setItem('optinote_schedule', JSON.stringify(updated))
       }
 
@@ -335,28 +351,38 @@ export default function PlanningPage() {
         return a.startTime.localeCompare(b.startTime)
       })
 
-      const updatedSchedule: Schedule = {
-        ...(activeSchedule || DEFAULT_MOCK_SCHEDULE),
-        timetable_image_url: scanPhotoUrl,
-        generated_plan: mergedPlan,
-      }
-
-      setActiveSchedule(updatedSchedule)
-
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (user && updatedSchedule.id && !updatedSchedule.id.startsWith('sched-mock')) {
-        await supabase
+      if (user) {
+        const weekStart = activeSchedule?.week_start || new Date().toISOString().split('T')[0]
+        const { data: saved, error } = await supabase
           .from('schedules')
-          .update({
-            timetable_image_url: scanPhotoUrl,
-            generated_plan: mergedPlan,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', updatedSchedule.id)
+          .upsert(
+            {
+              user_id: user.id,
+              week_start: weekStart,
+              timetable_image_url: scanPhotoUrl,
+              generated_plan: mergedPlan,
+              homework: activeSchedule?.homework || [],
+              constraints: activeSchedule?.constraints || {},
+              status: 'active',
+            },
+            { onConflict: 'user_id,week_start' }
+          )
+          .select()
+          .single()
+
+        if (error) throw error
+        setActiveSchedule(saved)
       } else {
+        const updatedSchedule = {
+          ...activeSchedule,
+          timetable_image_url: scanPhotoUrl,
+          generated_plan: mergedPlan,
+        } as Schedule
+        setActiveSchedule(updatedSchedule)
         localStorage.setItem('optinote_schedule', JSON.stringify(updatedSchedule))
       }
 

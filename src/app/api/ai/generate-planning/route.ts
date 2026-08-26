@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     }
 
     // 8. Save schedule to database
-    await supabase.from('schedules').upsert(
+    const { error: saveError } = await supabase.from('schedules').upsert(
       {
         user_id: user.id,
         week_start: weekStart,
@@ -167,6 +167,9 @@ export async function POST(request: Request) {
       },
       { onConflict: 'user_id,week_start' }
     )
+    if (saveError) {
+      console.error('Error saving generated planning:', saveError)
+    }
 
     return NextResponse.json({ plan: generatedPlan })
   } catch (error: any) {

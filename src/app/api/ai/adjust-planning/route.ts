@@ -203,16 +203,18 @@ Génère les créneaux correspondant exactement à sa demande.`
 
     // 4. Sauvegarder dans Supabase si l'utilisateur est connecté
     if (user) {
-      await supabase.from('schedules').upsert(
+      const { error: saveError } = await supabase.from('schedules').upsert(
         {
           user_id: user.id,
           week_start: weekStart,
           generated_plan: updatedPlan,
           status: 'active',
-          updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,week_start' }
       )
+      if (saveError) {
+        console.error('Error saving adjusted planning:', saveError)
+      }
     }
 
     return NextResponse.json({
