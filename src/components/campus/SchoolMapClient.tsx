@@ -9,6 +9,7 @@ import {
   Popup,
   useMap,
 } from 'react-leaflet'
+import type { MapUser } from './mapUserTypes'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -382,6 +383,40 @@ function MapBoundsWatcher({
   return null
 }
 
+// Recalcule la taille interne de la carte Leaflet dès que son conteneur change
+// de dimensions (ouverture/fermeture de la sidebar, rotation mobile, barre
+// d'onglets qui apparaît après l'hydratation...). Sans ça, Leaflet garde la
+// taille mesurée à l'initialisation et la carte s'affiche coupée/décalée sur
+// mobile dès que le layout bouge après le premier rendu.
+function MapResizeHandler() {
+  const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+
+    const invalidate = () => map.invalidateSize()
+
+    // Un premier recalcul différé laisse le temps aux animations de layout
+    // (sidebar, barre d'onglets mobile) de se stabiliser après le montage.
+    const initialTimer = setTimeout(invalidate, 150)
+
+    const resizeObserver = new ResizeObserver(() => invalidate())
+    resizeObserver.observe(container)
+
+    window.addEventListener('resize', invalidate)
+    window.addEventListener('orientationchange', invalidate)
+
+    return () => {
+      clearTimeout(initialTimer)
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', invalidate)
+      window.removeEventListener('orientationchange', invalidate)
+    }
+  }, [map])
+
+  return null
+}
+
 // Contrôleur de centrage fluide (FlyTo) : déclenché UNIQUEMENT lors d'une action explicite (sélection de recherche ou clic cible)
 function FlyToController({
   target,
@@ -414,7 +449,7 @@ function FlyToController({
 
 interface SchoolMapClientProps {
   schools: School[]
-  users?: Partial<Profile>[]
+  users?: MapUser[]
   currentUserId?: string | null
   currentUserAvatarUrl?: string | null
   currentUserName?: string | null
@@ -433,6 +468,7 @@ interface SchoolMapClientProps {
   onSelectSchool?: (school: School) => void
   onSetUserSchool?: (school: School) => void
   onContactStudent?: (user: Partial<Profile>) => void
+  onJoinSession?: (sessionId: string, student: MapUser) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onLocationFound?: (loc: { latitude: number; longitude: number }) => void
 }
@@ -458,6 +494,7 @@ export default function SchoolMapClient({
   onSelectSchool,
   onSetUserSchool,
   onContactStudent,
+  onJoinSession,
   onBoundsChange,
   onLocationFound,
 }: SchoolMapClientProps) {
@@ -536,6 +573,7 @@ export default function SchoolMapClient({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        <MapResizeHandler />
         <MapBoundsWatcher onBoundsChange={onBoundsChange} />
         <FlyToController target={flyToTarget || null} />
         <RecenterButton userLocation={effectiveUserLocation} onLocationFound={onLocationFound} />
@@ -612,10 +650,17 @@ export default function SchoolMapClient({
               icon={createStudentIcon(student.full_name || 'Lycéen', student.avatar_url, isStudentVerified, Boolean(student.is_studying))}
               zIndexOffset={100}
             >
-              <Popup className="student-custom-popup" minWidth={250} maxWidth={300}>
-                <div className="p-2 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center text-xs font-black flex-shrink-0 overflow-hidden">
+              <Popup
+                className="student-custom-popup"
+                minWidth={175}
+                maxWidth={195}
+                autoPan={true}
+                autoPanPaddingTopLeft={[50, 70]}
+                autoPanPaddingBottomRight={[20, 20]}
+              >
+                <div className="p-1.5 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center text-[9px] font-black flex-shrink-0 overflow-hidden">
                       {student.avatar_url ? (
                         <img src={student.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
                       ) : (
@@ -623,59 +668,70 @@ export default function SchoolMapClient({
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        <h4 className="font-extrabold text-xs text-text-primary truncate">
+                      <div className="flex items-center gap-0.5">
+                        <h4 className="font-extrabold text-[10px] text-text-primary truncate">
                           {student.full_name || 'Lycéen OptiNote'}
                         </h4>
-                        {isMe && (
-                          <span className="text-[8px] bg-emerald-100 text-emerald-800 font-bold px-1 py-0.2 rounded">
-                            Moi
-                          </span>
-                        )}
                         {isStudentVerified && (
-                          <span className="text-[8px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded-full border border-blue-200 flex items-center gap-0.5">
-                            🛡️ Certifié
+                          <span className="text-[8px] flex-shrink-0" title="Lycéen Certifié 🛡️">
+                            🛡️
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-text-secondary truncate">
+                      <p className="text-[8.5px] text-text-secondary truncate">
                         {student.school_name || 'Lycée'} •{' '}
                         {student.class_level ? student.class_level.toUpperCase() : 'Lycée'}
                       </p>
                     </div>
                   </div>
 
-                  {/* Bio / Message de statut */}
-                  {student.bio && (
-                    <div className="p-2 rounded-xl bg-surface-secondary border border-border text-[10.5px] text-text-secondary leading-relaxed">
-                      💬 &quot;{student.bio}&quot;
-                    </div>
-                  )}
-
-                  {/* Spécialités de l'élève */}
-                  {student.specialties && student.specialties.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {student.specialties.slice(0, 3).map((spec, i) => (
-                        <span
-                          key={i}
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200"
-                        >
-                          {spec}
+                  {/* Session de révision en cours, le cas échéant */}
+                  {student.is_studying && student.study_session_id && (
+                    <div className="px-1.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-1">
+                      <span className="text-[8.5px] font-bold text-indigo-900 truncate flex items-center gap-0.5">
+                        🎓 <span className="truncate">{student.study_session_subject || 'Révision'}</span>
+                      </span>
+                      {typeof student.study_session_max === 'number' && (
+                        <span className="text-[8px] font-black text-indigo-700 flex-shrink-0">
+                          {student.study_session_current ?? 0}/{student.study_session_max}
                         </span>
-                      ))}
+                      )}
                     </div>
                   )}
 
-                  {/* Bouton d'interaction */}
+                  {/* Boutons d'interaction */}
                   {!isMe && (
-                    <button
-                      type="button"
-                      onClick={() => onContactStudent?.(student)}
-                      className="w-full h-7 rounded-lg bg-gradient-to-r from-primary-600 to-purple-600 text-white text-[11px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-95"
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      <span>Échanger sur le Campus</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {student.is_studying && student.study_session_id ? (
+                        student.study_session_joined_by_me ? (
+                          <span className="flex-1 h-6 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8.5px] font-bold flex items-center justify-center">
+                            Inscrit ✓
+                          </span>
+                        ) : typeof student.study_session_max === 'number' &&
+                          (student.study_session_current ?? 0) >= student.study_session_max ? (
+                          <span className="flex-1 h-6 rounded-lg bg-surface-secondary text-text-tertiary border border-border text-[8.5px] font-bold flex items-center justify-center">
+                            Complet
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onJoinSession?.(student.study_session_id as string, student)}
+                            className="flex-1 h-6 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[8.5px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                          >
+                            <GraduationCap className="h-2.5 w-2.5" />
+                            <span>Rejoindre</span>
+                          </button>
+                        )
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => onContactStudent?.(student)}
+                        className="flex-1 h-6 rounded-lg bg-gradient-to-r from-primary-600 to-purple-600 text-white text-[8.5px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer hover:opacity-95"
+                      >
+                        <MessageSquare className="h-2.5 w-2.5" />
+                        <span>Échanger</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </Popup>

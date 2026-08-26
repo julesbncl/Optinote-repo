@@ -27,6 +27,7 @@ import {
   EyeOff,
   Users,
   UserPlus,
+  UserCheck,
   MessageSquare,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -74,6 +75,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(true)
 
+  // États liés aux amis (pour afficher le bon statut dans "Camarades de spécialité")
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
+  const [pendingSentIds, setPendingSentIds] = useState<Set<string>>(new Set())
+
+  async function loadFriendStatus() {
+    try {
+      const res = await fetch('/api/campus/friends')
+      if (!res.ok) return
+      const fData = await res.json()
+      setFriendIds(new Set((fData.friends || []).map((f: { id: string }) => f.id)))
+      setPendingSentIds(
+        new Set((fData.pendingSent || []).map((f: { friend_id: string }) => f.friend_id))
+      )
+    } catch (err) {
+      console.warn('Error loading friend status:', err)
+    }
+  }
+
   async function handleSendDashboardFriendRequest(peer: { id: string; name: string }) {
     try {
       const res = await fetch('/api/campus/friends', {
@@ -83,12 +102,37 @@ export default function DashboardPage() {
       })
       if (res.ok) {
         toast.success(`Demande d’ami envoyée à ${peer.name} ! ✨`, { icon: '👋' })
+        setPendingSentIds((prev) => new Set(prev).add(peer.id))
       } else {
         const data = await res.json().catch(() => null)
         toast.error(data?.error || 'Erreur lors de l’envoi de la demande')
       }
     } catch {
       toast.error('Erreur lors de l’envoi de la demande')
+    }
+  }
+
+  async function handleJoinSession(sessionId: string) {
+    try {
+      const res = await fetch(`/api/campus/sessions/${sessionId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'join' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’inscription à la session')
+        return
+      }
+      toast.success('Tu as rejoint la session de révision ! 🎉', { icon: '🤝', duration: 4000 })
+      const usersRes = await fetch('/api/campus/users/location')
+      if (usersRes.ok) {
+        const uData = await usersRes.json()
+        setMapUsers(uData.users || [])
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de l’inscription à la session')
     }
   }
 
@@ -315,6 +359,8 @@ export default function DashboardPage() {
             const uData = await usersRes.json()
             setMapUsers(uData.users || [])
           }
+
+          loadFriendStatus()
 
           setData({
             subjects: subjectsRes.data && subjectsRes.data.length > 0 ? subjectsRes.data : [
@@ -667,6 +713,7 @@ export default function DashboardPage() {
               isLocked={!isSubscribed}
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}
+              onJoinSession={(sessionId) => handleJoinSession(sessionId)}
               onBoundsChange={handleBoundsChange}
               onLocationFound={(loc) => setUserLocation(loc)}
               onContactStudent={(student) => {
@@ -769,19 +816,43 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            e.preventDefault()
-                            handleSendDashboardFriendRequest({ id: peer.id || '', name })
-                          }}
-                          className="h-6 px-2 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                          title={`Ajouter ${name}`}
-                        >
-                          <UserPlus className="h-2.5 w-2.5" />
-                          <span>Ajouter</span>
-                        </button>
+                        {(() => {
+                          const isFriend = friendIds.has(peer.id || '')
+                          const isPending = pendingSentIds.has(peer.id || '')
+
+                          if (isFriend) {
+                            return (
+                              <span className="h-6 px-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold flex items-center gap-1">
+                                <UserCheck className="h-2.5 w-2.5" />
+                                <span>Ami</span>
+                              </span>
+                            )
+                          }
+
+                          if (isPending) {
+                            return (
+                              <span className="h-6 px-2 rounded-lg bg-surface-secondary text-text-tertiary border border-border text-[9px] font-bold flex items-center">
+                                <span>En attente</span>
+                              </span>
+                            )
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                handleSendDashboardFriendRequest({ id: peer.id || '', name })
+                              }}
+                              className="h-6 px-2 rounded-lg bg-surface hover:bg-primary-50 text-primary-700 border border-border hover:border-primary-300 text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                              title={`Ajouter ${name}`}
+                            >
+                              <UserPlus className="h-2.5 w-2.5" />
+                              <span>Ajouter</span>
+                            </button>
+                          )
+                        })()}
                         <Link
                           href={`/campus/messages?friendId=${peer.id}&friendName=${encodeURIComponent(name)}`}
                           className="h-6 px-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"

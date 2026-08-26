@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import type { School } from '@/types/campus'
 import type { Profile } from '@/types/database'
+import type { MapUser } from './mapUserTypes'
 
 const DynamicSchoolMap = dynamic(() => import('./SchoolMapClient'), {
   ssr: false,
@@ -16,7 +17,7 @@ const DynamicSchoolMap = dynamic(() => import('./SchoolMapClient'), {
 
 export interface SchoolMapProps {
   schools: School[]
-  users?: Partial<Profile>[]
+  users?: MapUser[]
   currentUserId?: string | null
   currentUserAvatarUrl?: string | null
   currentUserName?: string | null
@@ -35,6 +36,7 @@ export interface SchoolMapProps {
   onSelectSchool?: (school: School) => void
   onSetUserSchool?: (school: School) => void
   onContactStudent?: (user: Partial<Profile>) => void
+  onJoinSession?: (sessionId: string, student: MapUser) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onLocationFound?: (loc: { latitude: number; longitude: number }) => void
 }

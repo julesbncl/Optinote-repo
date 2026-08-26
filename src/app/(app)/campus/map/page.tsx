@@ -585,6 +585,31 @@ export default function CampusMapPage() {
     router.push(`/campus?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)
   }
 
+  // Rejoindre une session de révision directement depuis l'icône chapeau d'un élève sur la carte
+  async function handleJoinSessionFromMap(sessionId: string) {
+    try {
+      const res = await fetch(`/api/campus/sessions/${sessionId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'join' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’inscription à la session')
+        return
+      }
+      toast.success('Tu as rejoint la session de révision ! 🎉', { icon: '🤝', duration: 4000 })
+      const usersRes = await fetch('/api/campus/users/location')
+      if (usersRes.ok) {
+        const data = await usersRes.json()
+        setMapUsers(data.users || [])
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de l’inscription à la session')
+    }
+  }
+
   // Si non abonné (version gratuite d'essai), afficher l'écran de restriction Pro avec aperçu immersif
   if (!loading && !isPro) {
     return (
@@ -939,6 +964,7 @@ export default function CampusMapPage() {
               handleJoinSchool(school)
             }}
             onSetUserSchool={handleSetUserSchool}
+            onJoinSession={(sessionId) => handleJoinSessionFromMap(sessionId)}
             onBoundsChange={handleBoundsChange}
             onLocationFound={(loc) => setUserLocation(loc)}
             onContactStudent={(student) => {

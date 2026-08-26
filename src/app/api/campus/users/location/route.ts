@@ -8,6 +8,9 @@ const ACTIVE_SESSION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
 export async function GET() {
   try {
     const supabase = await createClient()
+    const {
+      data: { user: viewer },
+    } = await supabase.auth.getUser()
 
     const { data: dbUsers, error } = await supabase
       .from('profiles')
@@ -21,21 +24,31 @@ export async function GET() {
     }
 
     // Élèves ayant une session de révision active/à venir (créée ou rejointe) :
-    // affiche un badge chapeau d'étudiant 🎓 sur leur marqueur.
+    // affiche un badge chapeau d'étudiant 🎓 sur leur marqueur, avec les infos
+    // de la session pour permettre de la rejoindre directement depuis la carte.
     const cutoff = new Date(Date.now() - ACTIVE_SESSION_WINDOW_MS).toISOString()
     const { data: activeSessions } = await supabase
       .from('study_sessions')
-      .select('id')
+      .select('id, subject, max_participants')
       .gte('created_at', cutoff)
 
-    const activeSessionIds = (activeSessions || []).map((s) => s.id)
-    let studyingUserIds = new Set<string>()
+    const sessionById = new Map((activeSessions || []).map((s) => [s.id, s]))
+    const activeSessionIds = Array.from(sessionById.keys())
+
+    // userId -> sessionId (un élève n'est rattaché qu'à une seule session pour l'affichage carte)
+    const studyingUserSession = new Map<string, string>()
+    const participantsBySession = new Map<string, number>()
     if (activeSessionIds.length > 0) {
       const { data: activeParticipants } = await supabase
         .from('study_session_participants')
-        .select('user_id')
+        .select('user_id, session_id')
         .in('session_id', activeSessionIds)
-      studyingUserIds = new Set((activeParticipants || []).map((p) => p.user_id))
+      ;(activeParticipants || []).forEach((p) => {
+        participantsBySession.set(p.session_id, (participantsBySession.get(p.session_id) || 0) + 1)
+        if (!studyingUserSession.has(p.user_id)) {
+          studyingUserSession.set(p.user_id, p.session_id)
+        }
+      })
     }
 
     const mappedUsers = dbUsers
@@ -54,6 +67,10 @@ export async function GET() {
         const safeAvatarUrl =
           typeof u.avatar_url === 'string' && u.avatar_url.length <= 4000 ? u.avatar_url : null
 
+        const sessionId = studyingUserSession.get(u.id) || null
+        const session = sessionId ? sessionById.get(sessionId) : null
+        const sessionCurrent = sessionId ? participantsBySession.get(sessionId) || 0 : null
+
         return {
           id: u.id,
           full_name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
@@ -68,7 +85,14 @@ export async function GET() {
           longitude: lng,
           is_visible: u.is_visible_on_school ?? true,
           is_verified: Boolean(u.is_verified),
-          is_studying: studyingUserIds.has(u.id),
+          is_studying: Boolean(sessionId),
+          study_session_id: sessionId,
+          study_session_subject: session?.subject || null,
+          study_session_current: sessionCurrent,
+          study_session_max: session?.max_participants ?? null,
+          study_session_joined_by_me: Boolean(
+            viewer && sessionId && studyingUserSession.get(viewer.id) === sessionId
+          ),
           bio: prefs.bio || (u.specialties?.length ? `Spécialités : ${u.specialties.join(', ')}` : 'Élève actif sur OptiNote'),
         }
       })

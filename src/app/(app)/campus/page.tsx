@@ -350,6 +350,55 @@ function CampusHubContent() {
     }
   }
 
+  // Rejoindre une session depuis la carte (clic sur l'icône chapeau d'un élève),
+  // en s'appuyant sur la même session que la liste "Trouver une session" si déjà chargée.
+  async function handleJoinSessionFromMap(sessionId: string) {
+    const existing = revisionSessions.find((s) => s.id === sessionId)
+
+    if (existing) {
+      if (existing.joined) {
+        toast('Tu participes déjà à cette session.')
+        return
+      }
+      if (existing.current_participants >= existing.max_participants) {
+        toast.error('Cette session est déjà complète.')
+        return
+      }
+      await handleToggleJoinSession(existing)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/campus/sessions/${sessionId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'join' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Erreur lors de l’inscription à la session')
+        return
+      }
+      toast.success('Tu as rejoint la session de révision ! 🎉', { icon: '🤝', duration: 4000 })
+
+      const [sessionsRes, usersRes] = await Promise.all([
+        fetch('/api/campus/sessions'),
+        fetch('/api/campus/users/location'),
+      ])
+      if (sessionsRes.ok) {
+        const data = await sessionsRes.json()
+        setRevisionSessions(data.sessions || [])
+      }
+      if (usersRes.ok) {
+        const data = await usersRes.json()
+        setMapUsers(data.users || [])
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de l’inscription à la session')
+    }
+  }
+
   const filteredSessions = useMemo(() => {
     return revisionSessions.filter((s) => {
       const matchesFilter = sessionsFilter === 'all' || s.type === sessionsFilter
@@ -945,6 +994,7 @@ function CampusHubContent() {
               height="h-[220px] sm:h-[300px] lg:h-[380px]"
               onSelectSchool={(school) => setSelectedSchool(school)}
               onSetUserSchool={handleSetUserSchool}
+              onJoinSession={(sessionId) => handleJoinSessionFromMap(sessionId)}
               onBoundsChange={handleBoundsChange}
               onLocationFound={(loc) => setUserLocation(loc)}
               onContactStudent={(student) => {
