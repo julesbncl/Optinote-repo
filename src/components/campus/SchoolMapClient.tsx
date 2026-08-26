@@ -13,7 +13,6 @@ import type { MapUser } from './mapUserTypes'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
-  Sparkles,
   CheckCircle2,
   GraduationCap,
   MessageSquare,
@@ -187,7 +186,15 @@ function SchoolMarkerItem({
   useEffect(() => {
     if (!markerRef.current) return
     if (isSelected) {
-      markerRef.current.openPopup()
+      // Sélectionner un lycée (ex: depuis la recherche) déclenche aussi un flyTo
+      // vers sa position (voir FlyToController). Si on ouvre la popup immédiatement,
+      // Leaflet calcule son autoPan par rapport à la vue AVANT l'animation, ce qui
+      // la laisse mal positionnée (voire hors écran) une fois le flyTo terminé.
+      // On laisse donc le temps à l'animation de centrage de se terminer d'abord.
+      const timer = setTimeout(() => {
+        markerRef.current?.openPopup()
+      }, 350)
+      return () => clearTimeout(timer)
     } else {
       markerRef.current.closePopup()
     }
@@ -206,64 +213,48 @@ function SchoolMarkerItem({
     >
       <Popup
         className="school-custom-popup"
-        minWidth={220}
-        maxWidth={250}
+        minWidth={160}
+        maxWidth={180}
         autoPan={true}
-        autoPanPaddingTopLeft={[50, 70]}
-        autoPanPaddingBottomRight={[20, 20]}
+        autoPanPaddingTopLeft={[40, 90]}
+        autoPanPaddingBottomRight={[40, 40]}
         autoClose={true}
         closeOnClick={false}
       >
-        <div className="p-2.5 space-y-2">
-          <div className="flex items-start gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center flex-shrink-0">
-              <SchoolIcon className="h-3.5 w-3.5" />
+        <div className="p-1.5 space-y-1.5">
+          <div className="flex items-start gap-1.5">
+            <div className="h-5.5 w-5.5 rounded-md bg-primary-100 text-primary-700 flex items-center justify-center flex-shrink-0">
+              <SchoolIcon className="h-3 w-3" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-black text-[11px] sm:text-xs text-text-primary leading-snug truncate">
+              <h3 className="font-black text-[10px] text-text-primary leading-snug truncate">
                 {school.name}
               </h3>
-              <p className="text-[10px] text-text-secondary truncate">
-                {school.city} • {school.postal_code}
+              <p className="text-[8.5px] text-text-secondary truncate">
+                {school.city}
               </p>
             </div>
           </div>
 
-          <div
-            className={`px-1.5 py-1 rounded-lg flex items-center justify-between gap-1 border ${
-              isUserSchool
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                : 'bg-primary-50/60 text-primary-900 border-primary-100'
-            }`}
-          >
-            <div className="flex items-center gap-1 text-[10px] font-semibold min-w-0">
-              <Sparkles className="h-3 w-3 text-primary-600 flex-shrink-0" />
-              <span className="truncate">Salon d’entraide actif</span>
-            </div>
-            {isUserSchool ? (
-              <span className="text-[8.5px] font-black text-emerald-700 bg-white/90 px-1 py-0.2 rounded-md border border-emerald-200 flex-shrink-0">
-                🎓 Ton Lycée
-              </span>
-            ) : (
-              <span className="text-[8.5px] font-bold text-primary-700 bg-primary-50 px-1 py-0.2 rounded-md border border-primary-200 flex-shrink-0 truncate max-w-[80px]">
-                {school.academy || 'Lycée'}
-              </span>
-            )}
-          </div>
+          {isUserSchool && (
+            <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.3 rounded-md border border-emerald-200">
+              🎓 Ton lycée
+            </span>
+          )}
 
           {/* Bouton unique : rejoindre ce lycée (texte court, une seule ligne) */}
           {!isUserSchool && onSetUserSchool ? (
             <button
               type="button"
               onClick={() => onSetUserSchool(school)}
-              className="w-full h-7 px-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[10px] font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+              className="w-full h-6 px-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[9px] font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
             >
-              <GraduationCap className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">Rejoindre ce lycée</span>
+              <GraduationCap className="h-2.5 w-2.5 flex-shrink-0" />
+              <span className="truncate">Rejoindre</span>
             </button>
           ) : isUserSchool ? (
-            <div className="w-full h-6.5 px-2 rounded-lg bg-emerald-100 text-emerald-800 text-[9.5px] font-bold flex items-center justify-center gap-1 border border-emerald-300 whitespace-nowrap">
-              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+            <div className="w-full h-5.5 px-1.5 rounded-lg bg-emerald-100 text-emerald-800 text-[8.5px] font-bold flex items-center justify-center gap-1 border border-emerald-300 whitespace-nowrap">
+              <CheckCircle2 className="h-2.5 w-2.5 flex-shrink-0" />
               <span className="truncate">Profil public actif</span>
             </div>
           ) : null}
