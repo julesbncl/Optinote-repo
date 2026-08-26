@@ -30,6 +30,9 @@ export interface Profile {
   verification_status?: 'none' | 'pending' | 'verified' | 'rejected'
   verification_note?: string | null
   is_admin?: boolean
+  email_notif_messages?: boolean
+  email_notif_friends?: boolean
+  email_notif_revisions?: boolean
   subscription_current_period_end?: string | null
   preferences: Record<string, unknown>
   created_at: string

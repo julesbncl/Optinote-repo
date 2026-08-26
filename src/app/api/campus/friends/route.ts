@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { notifyFriendRequest } from '@/lib/email/notifications'
 
 // Données spécifiques à l'utilisateur connecté (amis, demandes en attente) :
 // ne doit jamais être mise en cache, sous peine d'afficher une liste périmée.
@@ -193,6 +194,18 @@ export async function POST(request: Request) {
         console.error('Error sending friend request:', error)
         return NextResponse.json({ error: 'Erreur lors de l’envoi de la demande' }, { status: 500 })
       }
+
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
+
+      notifyFriendRequest(supabase, {
+        senderId: user.id,
+        senderName: senderProfile?.full_name || 'Un lycéen',
+        receiverId: friendId,
+      })
 
       return NextResponse.json({ success: true, friendship: data, message: 'Demande d’ami envoyée ! ✨' })
     }

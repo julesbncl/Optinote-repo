@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Switch } from '@/components/ui/Switch'
 import { CLASS_LEVELS } from '@/lib/constants'
 import { OFFICIAL_SPECIALTIES } from '@/lib/curriculum'
 import {
@@ -26,6 +27,9 @@ import {
   BadgeCheck,
   Clock,
   RefreshCw,
+  Mail,
+  MessageSquare,
+  UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -69,9 +73,56 @@ export default function SettingsPage() {
   const [uploadingCertificate, setUploadingCertificate] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
+  const [notifPrefs, setNotifPrefs] = useState({
+    messages: true,
+    friends: true,
+    revisions: true,
+  })
+  const [savingNotifKey, setSavingNotifKey] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
+
+  async function updateNotifPref(key: 'messages' | 'friends' | 'revisions', value: boolean) {
+    const column = {
+      messages: 'email_notif_messages',
+      friends: 'email_notif_friends',
+      revisions: 'email_notif_revisions',
+    }[key]
+
+    const previous = notifPrefs[key]
+    setNotifPrefs((prev) => ({ ...prev, [key]: value }))
+    setSavingNotifKey(key)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setNotifPrefs((prev) => ({ ...prev, [key]: previous }))
+      setSavingNotifKey(null)
+      return
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [column]: value })
+      .eq('id', user.id)
+
+    setSavingNotifKey(null)
+
+    if (error) {
+      console.error('Error updating notification preference:', error)
+      setNotifPrefs((prev) => ({ ...prev, [key]: previous }))
+      toast.error('Erreur lors de la mise à jour de la préférence')
+      return
+    }
+
+    toast.success(
+      value ? 'Notifications activées ✅' : 'Notifications désactivées',
+      { duration: 2000 }
+    )
+  }
 
   useEffect(() => {
     async function load() {
@@ -98,6 +149,11 @@ export default function SettingsPage() {
                 ? data.specialties
                 : ['Mathématiques', 'Physique-Chimie']
             )
+            setNotifPrefs({
+              messages: data.email_notif_messages ?? true,
+              friends: data.email_notif_friends ?? true,
+              revisions: data.email_notif_revisions ?? true,
+            })
           }
         } else {
           const local = localStorage.getItem('optinote_mock_profile')
@@ -822,7 +878,75 @@ export default function SettingsPage() {
       </Card>
 
       {/* ═══════════════════════════════════════════════════════
-          2. EN SECOND (AU MILIEU) : FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)
+          2. NOTIFICATIONS PAR E-MAIL
+          ═══════════════════════════════════════════════════════ */}
+      <Card className="p-2.5 sm:p-3 space-y-2 shadow-2xs">
+        <div className="border-b border-border pb-1 flex items-center gap-1.5">
+          <Mail className="h-3.5 w-3.5 text-primary-600" />
+          <h2 className="text-xs sm:text-sm font-bold text-text-primary">
+            Notifications par e-mail
+          </h2>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <MessageSquare className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-primary">Nouveaux messages</p>
+                <p className="text-[8.5px] text-text-secondary leading-snug">
+                  Un e-mail quand tu reçois un message privé non lu
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={notifPrefs.messages}
+              onChange={(value) => updateNotifPref('messages', value)}
+              disabled={savingNotifKey === 'messages'}
+              label="Notifications par e-mail pour les nouveaux messages"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <UserPlus className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-primary">Demandes d&apos;ami</p>
+                <p className="text-[8.5px] text-text-secondary leading-snug">
+                  Un e-mail quand un lycéen t&apos;envoie une demande d&apos;ami
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={notifPrefs.friends}
+              onChange={(value) => updateNotifPref('friends', value)}
+              disabled={savingNotifKey === 'friends'}
+              label="Notifications par e-mail pour les demandes d'ami"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <GraduationCap className="h-3.5 w-3.5 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-primary">Sessions de révision</p>
+                <p className="text-[8.5px] text-text-secondary leading-snug">
+                  Un e-mail quand un ami propose une nouvelle session de révision
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={notifPrefs.revisions}
+              onChange={(value) => updateNotifPref('revisions', value)}
+              disabled={savingNotifKey === 'revisions'}
+              label="Notifications par e-mail pour les nouvelles sessions de révision"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════
+          3. FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)
           ═══════════════════════════════════════════════════════ */}
       <div className="space-y-1">
         <div className="flex items-center justify-between px-0.5">
@@ -962,7 +1086,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-          3. EN DERNIER (TOUT EN BAS) : COMPTE & DÉCONNEXION
+          4. EN DERNIER (TOUT EN BAS) : COMPTE & DÉCONNEXION
           ═══════════════════════════════════════════════════════ */}
       {profile?.is_admin && (
         <Card className="p-2.5 sm:p-3">

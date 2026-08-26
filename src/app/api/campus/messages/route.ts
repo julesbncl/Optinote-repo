@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
 import { sendMessageSchema } from '@/lib/validators/campus'
+import { notifyNewMessage } from '@/lib/email/notifications'
 
 import { z } from 'zod'
 
@@ -159,6 +160,27 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Error inserting message:', insertError)
       return NextResponse.json({ error: 'Erreur lors de l’envoi du message' }, { status: 500 })
+    }
+
+    // Notification e-mail (message privé uniquement, pas les salons de groupe) :
+    // on ne notifie que si c'est le seul message non lu de la conversation, pour
+    // éviter de spammer le destinataire tant qu'il n'a pas lu le précédent.
+    if (receiverId) {
+      const { count: unreadCount } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('sender_id', user.id)
+        .eq('receiver_id', receiverId)
+        .eq('is_read', false)
+
+      if ((unreadCount || 0) <= 1) {
+        notifyNewMessage(supabase, {
+          senderId: user.id,
+          senderName: profile?.full_name || 'Un lycéen',
+          receiverId,
+          content: moderation.cleanedContent,
+        })
+      }
     }
 
     return NextResponse.json({ message, isFlagged: !moderation.isSafe })

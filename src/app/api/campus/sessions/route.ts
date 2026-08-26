@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
+import { notifyNewRevisionSession } from '@/lib/email/notifications'
 
 // Sessions de révision partagées : ne doit jamais être mise en cache.
 export const dynamic = 'force-dynamic'
@@ -120,6 +121,13 @@ export async function POST(request: Request) {
       console.error('Error creating study session:', error)
       return NextResponse.json({ error: 'Erreur lors de la création de la session' }, { status: 500 })
     }
+
+    notifyNewRevisionSession(supabase, {
+      hostId: user.id,
+      hostName: session.profiles?.full_name || 'Un camarade',
+      title: session.title,
+      subject: session.subject,
+    })
 
     return NextResponse.json({
       success: true,
