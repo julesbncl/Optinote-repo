@@ -89,7 +89,7 @@ const DEFAULT_MOCK_SCHEDULE: Schedule = {
 export default function PlanningPage() {
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [activeSchedule, setActiveSchedule] = useState<Schedule | null>(DEFAULT_MOCK_SCHEDULE)
+  const [activeSchedule, setActiveSchedule] = useState<Schedule | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -400,13 +400,13 @@ export default function PlanningPage() {
         if (data && data.generated_plan) {
           setActiveSchedule(data)
         } else {
-          setActiveSchedule(DEFAULT_MOCK_SCHEDULE)
+          setActiveSchedule(null)
         }
       } else {
-        setActiveSchedule(DEFAULT_MOCK_SCHEDULE)
+        setActiveSchedule(null)
       }
     } catch {
-      setActiveSchedule(DEFAULT_MOCK_SCHEDULE)
+      setActiveSchedule(null)
     } finally {
       setLoading(false)
     }
@@ -461,7 +461,7 @@ export default function PlanningPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: promptToSend,
-          currentPlan: activeSchedule?.generated_plan || DEFAULT_MOCK_SCHEDULE.generated_plan,
+          currentPlan: activeSchedule?.generated_plan || [],
           weekStart: activeSchedule?.week_start || new Date().toISOString().split('T')[0],
         }),
       })
@@ -584,6 +584,16 @@ export default function PlanningPage() {
           GRILLE D'EMPLOI DU TEMPS & RÉVISIONS
           (Composant, dimensions et styles strictement identiques au Dashboard)
           ═══════════════════════════════════════════════════════ */}
+      {!activeSchedule && (
+        <div className="h-[180px] sm:h-[220px] rounded-2xl border border-dashed border-border bg-surface-secondary/40 flex flex-col items-center justify-center text-center gap-1.5 px-4">
+          <Sparkles className="h-6 w-6 text-primary-500" />
+          <p className="text-xs sm:text-sm font-bold text-text-primary">Aucun planning pour le moment</p>
+          <p className="text-[10px] sm:text-[11px] text-text-tertiary max-w-xs">
+            Génère ton emploi du temps avec l&apos;IA juste en dessous, ou scanne ton emploi du temps papier.
+          </p>
+        </div>
+      )}
+
       {activeSchedule && (
         <div className="h-[290px] sm:h-[340px]">
           <DashboardPlanningGrid
