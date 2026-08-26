@@ -1,8 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail, sendWelcomeEmail, sendTestEmail, sendVerificationEmail } from '@/lib/email'
+import { createClient } from '@/lib/supabase/server'
+
+// Outil de diagnostic Resend réservé aux administrateurs : sans cette garde,
+// n'importe qui pourrait utiliser ce endpoint comme relais pour envoyer des
+// e-mails arbitraires (type "custom") depuis le domaine optinote.fr —
+// risque de spam, d'abus et de dégradation de la réputation d'envoi.
+async function requireAdmin() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return false
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  return Boolean(profile?.is_admin)
+}
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAdmin())) {
+      return NextResponse.json({ error: 'Accès réservé aux administrateurs' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { to, type = 'test', name, subject, message, verificationUrl } = body
 

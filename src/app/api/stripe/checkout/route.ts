@@ -72,7 +72,10 @@ export async function POST(request: NextRequest) {
       ? (process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1U7H5KRwM4B48KWbDoLCFGzq')
       : (process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGrWM4B48KwBLvdM5LSU')
 
-    const priceId = !isPromoValid ? (body.priceId || selectedPlan.stripePriceId || envPriceId) : undefined
+    // Le prix ne doit JAMAIS venir du client (body.priceId) : un ID de prix arbitraire
+    // permettrait de payer un montant différent tout en recevant l'accès Pro complet,
+    // car le webhook se base sur metadata.plan_tier et non sur le prix réellement facturé.
+    const priceId = !isPromoValid ? (selectedPlan.stripePriceId || envPriceId) : undefined
 
     const forwardedHost = request.headers.get('x-forwarded-host')
     const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'

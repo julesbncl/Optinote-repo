@@ -30,6 +30,10 @@ export default function AppLayout({
         .single()
 
       if (data) {
+        if (!data.onboarding_completed) {
+          router.push('/onboarding')
+          return
+        }
         setProfile(data)
       } else {
         console.error('Error fetching profile:', error)

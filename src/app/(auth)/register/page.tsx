@@ -67,7 +67,7 @@ export default function RegisterPage() {
           data: {
             full_name: data.fullName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/onboarding`,
         },
       })
 
@@ -106,9 +106,9 @@ export default function RegisterPage() {
         return
       }
 
-      // 4. If auto-confirmed, proceed directly to dashboard
+      // 4. If auto-confirmed, proceed to onboarding (niveau, spécialités, lycée...)
       toast.success('Compte créé avec succès ! Bienvenue sur OptiNote 🎉')
-      router.push('/dashboard')
+      router.push('/onboarding')
       router.refresh()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)

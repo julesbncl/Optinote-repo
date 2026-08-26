@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/ai/openai'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { RATE_LIMITS } from '@/lib/constants'
 
 export async function POST(request: Request) {
   try {
@@ -8,6 +10,18 @@ export async function POST(request: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const rateLimit = checkRateLimit(`ai:adjust-planning:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
+        { status: 429 }
+      )
+    }
 
     const body = await request.json()
     const { prompt, currentPlan = [], weekStart = new Date().toISOString().split('T')[0] } = body
