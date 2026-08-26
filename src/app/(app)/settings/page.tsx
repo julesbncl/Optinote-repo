@@ -964,6 +964,26 @@ export default function SettingsPage() {
       {/* ═══════════════════════════════════════════════════════
           3. EN DERNIER (TOUT EN BAS) : COMPTE & DÉCONNEXION
           ═══════════════════════════════════════════════════════ */}
+      {profile?.is_admin && (
+        <Card className="p-2.5 sm:p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-bold text-text-primary">
+                Administration
+              </p>
+              <p className="text-[9px] text-text-secondary">
+                Certificats en attente & signalements de messages
+              </p>
+            </div>
+            <Link href="/admin">
+              <Button variant="secondary" size="sm" className="text-[11px] font-bold h-7 px-3">
+                Ouvrir
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-2.5 sm:p-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>

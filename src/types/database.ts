@@ -29,6 +29,7 @@ export interface Profile {
   school_certificate_url?: string | null
   verification_status?: 'none' | 'pending' | 'verified' | 'rejected'
   verification_note?: string | null
+  is_admin?: boolean
   subscription_current_period_end?: string | null
   preferences: Record<string, unknown>
   created_at: string
