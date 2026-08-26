@@ -1104,17 +1104,17 @@ export default function SettingsPage() {
 
         {referralInfo ? (
           <>
-            <div className="flex flex-col sm:flex-row items-stretch gap-1.5">
+            <div className="relative">
               <input
                 readOnly
                 value={`optinote.fr/register?ref=${referralInfo.referralCode}`}
                 onFocus={(e) => e.currentTarget.select()}
-                className="flex-1 min-w-0 h-9 px-2.5 rounded-lg bg-surface-secondary border border-border text-[10.5px] font-mono text-text-primary truncate"
+                className="w-full h-10 pl-2.5 pr-[6.5rem] rounded-lg bg-surface-secondary border border-border text-[10.5px] font-mono text-text-primary truncate appearance-none box-border"
               />
               <button
                 type="button"
                 onClick={handleCopyReferralLink}
-                className="h-9 px-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-[10.5px] font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-2xs flex-shrink-0"
+                className="absolute right-1 top-1 bottom-1 px-3 rounded-md bg-primary-600 hover:bg-primary-700 text-white text-[10.5px] font-bold flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all shadow-2xs"
               >
                 {copiedReferralLink ? (
                   <>
@@ -1124,7 +1124,7 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <Copy className="h-3.5 w-3.5" />
-                    <span>Copier le lien</span>
+                    <span>Copier</span>
                   </>
                 )}
               </button>
