@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Get current profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('stripe_customer_id, email, full_name')
+      .select('stripe_customer_id, email, full_name, free_months_credit')
       .eq('id', user.id)
       .single()
 
@@ -60,6 +60,26 @@ export async function POST(request: NextRequest) {
 
     const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim().toUpperCase() : undefined
     const isPromoValid = Boolean(promoCode && (VALID_PROMO_CODES as readonly string[]).includes(promoCode))
+
+    // Parrainage : la récompense n'est jamais appliquée sur la base d'un flag
+    // envoyé par le client — on vérifie nous-mêmes, côté serveur, qu'un
+    // parrainage "pending" existe réellement pour cet utilisateur avant
+    // d'accorder quoi que ce soit. Non cumulable avec un code promo manuel.
+    let referralDiscount: 'referred' | 'referrer_credit' | null = null
+    if (!isPromoValid && process.env.STRIPE_REFERRAL_COUPON_ID) {
+      const { data: pendingReferral } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_id', user.id)
+        .eq('status', 'pending')
+        .maybeSingle()
+
+      if (pendingReferral) {
+        referralDiscount = 'referred'
+      } else if ((profile?.free_months_credit || 0) > 0) {
+        referralDiscount = 'referrer_credit'
+      }
+    }
 
     const finalPrice = isPromoValid
       ? getDiscountedPrice(selectedPlan.price, PROMO_DISCOUNT_PERCENT)
@@ -113,6 +133,8 @@ export async function POST(request: NextRequest) {
         billing_interval: interval,
         promo_code: promoCode || 'none',
         discount_percent: isPromoValid ? '15%' : '0%',
+        referral_pending: referralDiscount === 'referred' ? 'true' : 'false',
+        consume_referral_credit: referralDiscount === 'referrer_credit' ? 'true' : 'false',
       },
       subscription_data: {
         metadata: {
@@ -122,8 +144,13 @@ export async function POST(request: NextRequest) {
           promo_code: promoCode || 'none',
         },
       },
-      allow_promotion_codes: true,
       billing_address_collection: 'auto' as const,
+      // Stripe interdit de combiner `discounts` et `allow_promotion_codes` sur une
+      // même session : la récompense de parrainage (automatique) exclut donc la
+      // saisie manuelle d'un code promo Stripe pour ce paiement précis.
+      ...(referralDiscount
+        ? { discounts: [{ coupon: process.env.STRIPE_REFERRAL_COUPON_ID as string }] }
+        : { allow_promotion_codes: true }),
     }
 
     let session

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -12,10 +12,27 @@ import { StepPostBac } from '@/components/onboarding/StepPostBac'
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function OnboardingPage() {
+function OnboardingFlow() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Parrainage : si l'inscription vient d'un lien d'invitation (transmis via le
+  // lien de confirmation d'e-mail), on l'enregistre une fois arrivé ici connecté.
+  useEffect(() => {
+    const referralCode = searchParams.get('ref')?.trim().toUpperCase()
+    if (!referralCode) return
+
+    fetch('/api/referrals/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: referralCode }),
+    }).catch((err) => console.warn('Error claiming referral code:', err))
+    // Volontairement exécuté une seule fois au montage : searchParams est stable
+    // pour la durée de vie de cette page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Form State
   const [classLevel, setClassLevel] = useState('terminale')
@@ -157,5 +174,13 @@ export default function OnboardingPage() {
         </div>
       </div>
     </Card>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingFlow />
+    </Suspense>
   )
 }

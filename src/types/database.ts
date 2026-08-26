@@ -39,6 +39,9 @@ export interface Profile {
   longest_streak?: number
   last_streak_date?: string | null
   last_known_average?: number | null
+  leaderboard_opt_in?: boolean
+  referral_code?: string | null
+  free_months_credit?: number
   subscription_current_period_end?: string | null
   preferences: Record<string, unknown>
   created_at: string

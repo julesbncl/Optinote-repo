@@ -12,6 +12,62 @@ const supabaseAdmin = createClient(
     'placeholder-key'
 )
 
+// Convertit un parrainage "pending" en "converted" et récompense le parrain,
+// uniquement appelé depuis un événement Stripe dont la signature a déjà été
+// vérifiée — jamais atteignable depuis une route appelable par le client.
+async function processReferralConversion(referredUserId: string) {
+  const { data: referral } = await supabaseAdmin
+    .from('referrals')
+    .select('id, referrer_id')
+    .eq('referred_id', referredUserId)
+    .eq('status', 'pending')
+    .maybeSingle()
+
+  if (!referral) return
+
+  await supabaseAdmin
+    .from('referrals')
+    .update({ status: 'converted', converted_at: new Date().toISOString() })
+    .eq('id', referral.id)
+
+  const { data: referrerProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('stripe_customer_id, subscription_status, free_months_credit')
+    .eq('id', referral.referrer_id)
+    .single()
+
+  if (!referrerProfile) return
+
+  const couponId = process.env.STRIPE_REFERRAL_COUPON_ID
+  const referrerHasActiveSub =
+    referrerProfile.stripe_customer_id &&
+    ['active', 'trialing'].includes(referrerProfile.subscription_status || '')
+
+  if (referrerHasActiveSub && couponId) {
+    try {
+      const subs = await stripe.subscriptions.list({
+        customer: referrerProfile.stripe_customer_id as string,
+        status: 'active',
+        limit: 1,
+      })
+      const activeSub = subs.data[0]
+      if (activeSub) {
+        await stripe.subscriptions.update(activeSub.id, { discounts: [{ coupon: couponId }] })
+        return
+      }
+    } catch (err) {
+      console.error('Error applying referral reward coupon to referrer subscription:', err)
+    }
+  }
+
+  // Pas d'abonnement actif (ou coupon indisponible) : le mois offert est crédité
+  // et sera automatiquement appliqué au prochain passage en caisse du parrain.
+  await supabaseAdmin
+    .from('profiles')
+    .update({ free_months_credit: (referrerProfile.free_months_credit || 0) + 1 })
+    .eq('id', referral.referrer_id)
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = (await headers()).get('stripe-signature')
@@ -83,6 +139,27 @@ export async function POST(request: NextRequest) {
             })
             .eq('email', customerEmail)
         }
+
+        // Parrainage : converti et récompensé seulement ici, sur ce paiement Stripe
+        // réellement confirmé (voir processReferralConversion ci-dessus).
+        if (userId && session.metadata?.referral_pending === 'true') {
+          try {
+            await processReferralConversion(userId)
+          } catch (err) {
+            console.error('Error processing referral conversion:', err)
+          }
+        }
+
+        if (userId && session.metadata?.consume_referral_credit === 'true') {
+          const { data: p } = await supabaseAdmin
+            .from('profiles')
+            .select('free_months_credit')
+            .eq('id', userId)
+            .single()
+          const remaining = Math.max(0, (p?.free_months_credit || 1) - 1)
+          await supabaseAdmin.from('profiles').update({ free_months_credit: remaining }).eq('id', userId)
+        }
+
         break
       }
 

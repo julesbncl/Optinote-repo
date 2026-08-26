@@ -9,6 +9,7 @@ import { ChannelList } from '@/components/campus/ChannelList'
 import { FriendsList } from '@/components/campus/FriendsList'
 import { ChatWindow } from '@/components/campus/ChatWindow'
 import { SchoolMap } from '@/components/campus/SchoolMap'
+import { LeaderboardCard } from '@/components/campus/LeaderboardCard'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -1012,6 +1013,9 @@ function CampusHubContent() {
 
         {/* COLONNE DROITE (5 cols) : RÉORGANISATION VERTICALE */}
         <div className="lg:col-span-5 flex flex-col space-y-3">
+          {/* 0. CLASSEMENT ENTRE AMIS (opt-in, voir Paramètres) */}
+          <LeaderboardCard />
+
           {/* 1. EN HAUT : SECTION ÉLÈVES CONNECTÉS À PROXIMITÉ */}
           <div className="bg-surface rounded-2xl border border-border shadow-xs p-2.5 sm:p-3.5 space-y-2 sm:space-y-2.5">
             <div className="flex items-center justify-between">

@@ -32,6 +32,9 @@ import {
   UserPlus,
   Sun,
   TrendingUp,
+  Trophy,
+  Gift,
+  Copy,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -83,9 +86,66 @@ export default function SettingsPage() {
     gradeEvolution: true,
   })
   const [savingNotifKey, setSavingNotifKey] = useState<string | null>(null)
+  const [leaderboardOptIn, setLeaderboardOptIn] = useState(false)
+  const [savingLeaderboard, setSavingLeaderboard] = useState(false)
+  const [referralInfo, setReferralInfo] = useState<{
+    referralCode: string
+    freeMonthsCredit: number
+    referredCount: number
+    convertedCount: number
+  } | null>(null)
+  const [copiedReferralLink, setCopiedReferralLink] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
+
+  async function updateLeaderboardOptIn(value: boolean) {
+    const previous = leaderboardOptIn
+    setLeaderboardOptIn(value)
+    setSavingLeaderboard(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setLeaderboardOptIn(previous)
+      setSavingLeaderboard(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ leaderboard_opt_in: value })
+      .eq('id', user.id)
+
+    setSavingLeaderboard(false)
+
+    if (error) {
+      console.error('Error updating leaderboard opt-in:', error)
+      setLeaderboardOptIn(previous)
+      toast.error('Erreur lors de la mise à jour de la préférence')
+      return
+    }
+
+    toast.success(
+      value ? 'Tu participes désormais aux classements 🏆' : 'Classements désactivés',
+      { duration: 2500 }
+    )
+  }
+
+  async function handleCopyReferralLink() {
+    if (!referralInfo) return
+    const link = `${window.location.origin}/register?ref=${referralInfo.referralCode}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedReferralLink(true)
+      toast.success('Lien copié !')
+      setTimeout(() => setCopiedReferralLink(false), 2000)
+    } catch {
+      toast.error('Impossible de copier le lien')
+    }
+  }
 
   async function updateNotifPref(
     key: 'messages' | 'friends' | 'revisions' | 'planningReminder' | 'gradeEvolution',
@@ -165,7 +225,15 @@ export default function SettingsPage() {
               planningReminder: data.email_notif_planning_reminder ?? true,
               gradeEvolution: data.email_notif_grade_evolution ?? true,
             })
+            setLeaderboardOptIn(data.leaderboard_opt_in ?? false)
           }
+
+          fetch('/api/referrals/me')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((info) => {
+              if (info) setReferralInfo(info)
+            })
+            .catch((err) => console.warn('Error loading referral info:', err))
         } else {
           const local = localStorage.getItem('optinote_mock_profile')
           if (local) {
@@ -993,7 +1061,97 @@ export default function SettingsPage() {
       </Card>
 
       {/* ═══════════════════════════════════════════════════════
-          3. FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)
+          3. CLASSEMENT ENTRE AMIS (OPT-IN)
+          ═══════════════════════════════════════════════════════ */}
+      <Card className="p-2.5 sm:p-3 space-y-2 shadow-2xs">
+        <div className="border-b border-border pb-1 flex items-center gap-1.5">
+          <Trophy className="h-3.5 w-3.5 text-primary-600" />
+          <h2 className="text-xs sm:text-sm font-bold text-text-primary">
+            Classement entre amis
+          </h2>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 p-2 bg-surface-secondary/40 rounded-xl border border-border/80">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-text-primary">Participer aux classements</p>
+              <p className="text-[8.5px] text-text-secondary leading-snug">
+                Tes amis pourront voir ta série 🔥 et ta moyenne dans le classement du Campus. Désactivé par défaut.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={leaderboardOptIn}
+            onChange={(value) => updateLeaderboardOptIn(value)}
+            disabled={savingLeaderboard}
+            label="Participer au classement entre amis"
+          />
+        </div>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════
+          4. PARRAINAGE
+          ═══════════════════════════════════════════════════════ */}
+      <Card className="p-2.5 sm:p-3 space-y-2.5 shadow-2xs">
+        <div className="border-b border-border pb-1 flex items-center gap-1.5">
+          <Gift className="h-3.5 w-3.5 text-primary-600" />
+          <h2 className="text-xs sm:text-sm font-bold text-text-primary">Parraine un ami 🎁</h2>
+        </div>
+
+        <p className="text-[10px] text-text-secondary leading-snug">
+          Ton ami s&apos;inscrit avec ton lien : dès qu&apos;il passe Pro, vous recevez chacun un mois offert.
+        </p>
+
+        {referralInfo ? (
+          <>
+            <div className="flex flex-col sm:flex-row items-stretch gap-1.5">
+              <input
+                readOnly
+                value={`optinote.fr/register?ref=${referralInfo.referralCode}`}
+                onFocus={(e) => e.currentTarget.select()}
+                className="flex-1 min-w-0 h-9 px-2.5 rounded-lg bg-surface-secondary border border-border text-[10.5px] font-mono text-text-primary truncate"
+              />
+              <button
+                type="button"
+                onClick={handleCopyReferralLink}
+                className="h-9 px-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-[10.5px] font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-2xs flex-shrink-0"
+              >
+                {copiedReferralLink ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Copié</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Copier le lien</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              <div className="text-center py-2 rounded-lg bg-surface-secondary/60 border border-border/60">
+                <p className="text-sm font-black text-text-primary">{referralInfo.referredCount}</p>
+                <p className="text-[8px] text-text-tertiary font-bold uppercase">Invités</p>
+              </div>
+              <div className="text-center py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                <p className="text-sm font-black text-emerald-700">{referralInfo.convertedCount}</p>
+                <p className="text-[8px] text-emerald-700 font-bold uppercase">Convertis</p>
+              </div>
+              <div className="text-center py-2 rounded-lg bg-primary-50 border border-primary-200">
+                <p className="text-sm font-black text-primary-700">{referralInfo.freeMonthsCredit}</p>
+                <p className="text-[8px] text-primary-700 font-bold uppercase">Mois en attente</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="h-9 rounded-lg bg-surface-secondary animate-pulse" />
+        )}
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════
+          5. FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)
           ═══════════════════════════════════════════════════════ */}
       <div className="space-y-1">
         <div className="flex items-center justify-between px-0.5">
@@ -1133,7 +1291,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-          4. EN DERNIER (TOUT EN BAS) : COMPTE & DÉCONNEXION
+          6. EN DERNIER (TOUT EN BAS) : COMPTE & DÉCONNEXION
           ═══════════════════════════════════════════════════════ */}
       {profile?.is_admin && (
         <Card className="p-2.5 sm:p-3">

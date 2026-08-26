@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { registerSchema } from '@/lib/validators/auth'
@@ -19,8 +19,10 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const referralCode = searchParams.get('ref')?.trim().toUpperCase() || null
   const supabase = createClient()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -67,7 +69,9 @@ export default function RegisterPage() {
           data: {
             full_name: data.fullName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/onboarding`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(
+            referralCode ? `/onboarding?ref=${referralCode}` : '/onboarding'
+          )}`,
         },
       })
 
@@ -106,7 +110,21 @@ export default function RegisterPage() {
         return
       }
 
-      // 4. If auto-confirmed, proceed to onboarding (niveau, spécialités, lycée...)
+      // 4. Si un code de parrainage est présent, l'enregistrer (sans effet financier
+      // immédiat : la récompense n'est accordée que plus tard, sur paiement confirmé)
+      if (referralCode) {
+        try {
+          await fetch('/api/referrals/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: referralCode }),
+          })
+        } catch (err) {
+          console.warn('Error claiming referral code:', err)
+        }
+      }
+
+      // 5. Si auto-confirmé, proceed to onboarding (niveau, spécialités, lycée...)
       toast.success('Compte créé avec succès ! Bienvenue sur OptiNote 🎉')
       router.push('/onboarding')
       router.refresh()
@@ -323,5 +341,17 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-surface/95 backdrop-blur-md rounded-xl sm:rounded-3xl border border-border p-3.5 sm:p-7 shadow-xl shadow-primary-950/5 flex items-center justify-center h-48">
+        <div className="h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   )
 }
