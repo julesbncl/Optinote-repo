@@ -182,6 +182,21 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack, isFrien
       }
 
       const data = await res.json()
+
+      // Remplace le message optimiste (id temporaire) par le vrai enregistrement
+      // renvoyé par l'API. Le canal Realtime va aussi recevoir cet INSERT — s'il
+      // est déjà arrivé avant que cette réponse ne revienne, il est déjà présent
+      // avec le vrai id, donc on ne le rajoute pas en double.
+      if (data.message) {
+        setMessages((prev) => {
+          const withoutOptimistic = prev.filter((m) => m.id !== tempId)
+          if (withoutOptimistic.some((m) => m.id === data.message.id)) {
+            return withoutOptimistic
+          }
+          return [...withoutOptimistic, { ...data.message, profiles: optimisticMessage.profiles }]
+        })
+      }
+
       if (data.isFlagged) {
         toast('Message filtré par la modération anti-harcèlement.', {
           icon: '🛡️',
