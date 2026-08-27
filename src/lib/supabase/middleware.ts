@@ -9,7 +9,12 @@ export async function updateSession(request: NextRequest) {
   // ═════════════════════════════════════════════════════════
   // 1. Middleware CORS Strict pour l'API
   // ═════════════════════════════════════════════════════════
-  const origin = request.headers.get('origin')
+  // Safari (mode Privé, appli ajoutée à l'écran d'accueil, redirections
+  // cross-origin) envoie parfois littéralement la chaîne "null" comme Origin
+  // plutôt que d'omettre l'en-tête. On la traite comme une origine absente,
+  // déjà autorisée juste en dessous (requêtes serveur à serveur, apps mobiles).
+  const rawOrigin = request.headers.get('origin')
+  const origin = rawOrigin && rawOrigin !== 'null' ? rawOrigin : null
   const isProduction = process.env.NODE_ENV === 'production'
 
   const ALLOWED_ORIGINS = isProduction
