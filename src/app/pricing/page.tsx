@@ -35,6 +35,8 @@ function PricingContent() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
   // Abonnement actuel de l'utilisateur connecté (si connecté et abonné)
   const [currentTier, setCurrentTier] = useState<'monthly' | 'annual' | null>(null)
   const [periodEnd, setPeriodEnd] = useState<string | null>(null)
@@ -47,6 +49,7 @@ function PricingContent() {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
+      setIsLoggedIn(true)
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -242,18 +245,21 @@ function PricingContent() {
           <Logo size="md" href="/" className="hidden sm:flex" />
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <Link
-              href="/dashboard"
-              className="text-[11px] sm:text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded-md"
-            >
-              Mon Espace
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-7 sm:h-9 px-2.5 sm:px-4 text-[11px] sm:text-sm font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
-            >
-              Connexion
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="text-[11px] sm:text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded-md"
+              >
+                Mon Espace
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center h-7 sm:h-9 px-2.5 sm:px-4 text-[11px] sm:text-sm font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+              >
+                Connexion
+              </Link>
+            )}
           </div>
         </div>
       </nav>
