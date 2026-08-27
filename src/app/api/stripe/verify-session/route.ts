@@ -21,11 +21,19 @@ export async function POST(request: NextRequest) {
     // Retrieve checkout session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
-    if (
-      session.payment_status === 'paid' ||
-      session.status === 'complete' ||
-      session.mode === 'subscription'
-    ) {
+    // Cette route est un simple raccourci pour un retour instantané côté UI
+    // (le webhook Stripe signé reste la source de vérité pour l'activation
+    // réelle) — mais elle est appelable par n'importe quel utilisateur
+    // authentifié avec n'importe quel sessionId, donc les deux vérifications
+    // ci-dessous sont indispensables : sans elles, un ancien mode === 'subscription'
+    // suffisait à activer le Pro gratuitement avec une session non payée ou
+    // appartenant à quelqu'un d'autre.
+    const belongsToCurrentUser = session.metadata?.supabase_user_id === user.id
+    const isActuallyPaid =
+      session.status === 'complete' &&
+      (session.payment_status === 'paid' || session.payment_status === 'no_payment_required')
+
+    if (belongsToCurrentUser && isActuallyPaid) {
       const planTier = session.metadata?.plan_tier || 'monthly'
 
       // Update user profile in Supabase
