@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -99,12 +100,7 @@ export default function RevisionPage() {
   const [pdfFolderId, setPdfFolderId] = useState<string | null>(null)
   const [isImportingPdf, setIsImportingPdf] = useState(false)
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   function handleCreateSheet() {
     if (!isSubscribed && sheets.length >= 1) {

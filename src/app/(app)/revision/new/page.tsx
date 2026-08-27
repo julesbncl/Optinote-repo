@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -239,12 +240,7 @@ export default function NewRevisionPage() {
             supabase.from('revision_sheets').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
           ])
 
-          const isSubscribed = Boolean(
-            profile &&
-              (profile.is_pro === true ||
-                (['active', 'trialing'].includes(profile.subscription_status || '') &&
-                  (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-          )
+          const isSubscribed = checkIsPro(profile)
 
           if (!isSubscribed && (count || 0) >= 1) {
             toast.error('Limite de l’Essai gratuit atteinte : 1 fiche de révision max. Débloque le mode Pro pour des fiches en illimité !')

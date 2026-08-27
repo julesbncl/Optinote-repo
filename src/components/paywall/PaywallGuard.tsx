@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Lock, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import type { Profile } from '@/types/database'
 
 interface PaywallGuardProps {
@@ -20,12 +21,7 @@ export function PaywallGuard({
   title = 'Fonctionnalité réservée aux membres abonnés',
   description = 'Débloque cet outil IA d’excellence et maximise tes notes au lycée en rejoignant OptiNote.',
 }: PaywallGuardProps) {
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   if (isSubscribed) {
     return <>{children}</>

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { createClient } from '@/lib/supabase/client'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import {
   PRICING_PLANS,
   VALID_PROMO_CODES,
@@ -53,16 +54,11 @@ function PricingContent() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_pro, subscription_tier, subscription_status, subscription_current_period_end')
+        .select('is_pro, subscription_tier, subscription_status, subscription_current_period_end, beta_access_redeemed_at')
         .eq('id', user.id)
         .single()
 
-      const isSubscribed = Boolean(
-        profile &&
-          (profile.is_pro === true ||
-            (['active', 'trialing'].includes(profile.subscription_status || '') &&
-              (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-      )
+      const isSubscribed = checkIsPro(profile)
 
       if (isSubscribed && profile) {
         const tier = profile.subscription_tier === 'annual' ? 'annual' : 'monthly'

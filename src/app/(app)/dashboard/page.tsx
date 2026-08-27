@@ -33,6 +33,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import toast from 'react-hot-toast'
 import type { Subject, Grade, RevisionSheet, Schedule, Profile } from '@/types/database'
 import type { School } from '@/types/campus'
@@ -405,12 +406,7 @@ export default function DashboardPage() {
     streak: streak.current,
   })
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   if (loading) {
     return (

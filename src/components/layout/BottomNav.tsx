@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import type { Profile } from '@/types/database'
 import { PaywallModal } from '@/components/paywall/PaywallModal'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 
 interface BottomNavProps {
   profile?: Profile | null
@@ -23,12 +24,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
   const pathname = usePathname()
   const [paywallFeature, setPaywallFeature] = useState<'campus' | 'planning' | null>(null)
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   const navItems = isSubscribed
     ? [

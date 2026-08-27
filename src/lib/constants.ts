@@ -249,3 +249,25 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
 ]
 
+// ═══════════════════════════════════════════════════════
+// Accès Beta temporaire (liste d'attente TikTok)
+// ═══════════════════════════════════════════════════════
+// Code partagé distribué à tous les inscrits sur la liste d'attente : donne
+// un accès Pro complet, mais seulement pendant les 48h précédant le
+// lancement officiel du 1er septembre 2026, quelle que soit la date à
+// laquelle le code a été saisi.
+export const BETA_ACCESS_CODE = process.env.NEXT_PUBLIC_BETA_ACCESS_CODE?.trim() || 'RENTREE2026'
+export const BETA_ACCESS_WINDOW_START = new Date('2026-08-30T00:00:00+02:00')
+export const BETA_ACCESS_WINDOW_END = new Date('2026-09-01T00:00:00+02:00')
+
+export function isBetaAccessWindowActive(): boolean {
+  const now = new Date()
+  return now >= BETA_ACCESS_WINDOW_START && now < BETA_ACCESS_WINDOW_END
+}
+
+export function hasBetaAccess(
+  profile: { beta_access_redeemed_at?: string | null } | null | undefined
+): boolean {
+  return Boolean(profile?.beta_access_redeemed_at) && isBetaAccessWindowActive()
+}
+

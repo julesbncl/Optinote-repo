@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import type { School } from '@/types/campus'
 import type { Profile } from '@/types/database'
 
@@ -393,12 +394,7 @@ export default function CampusMapPage() {
   }
 
   // Vérification du statut Pro
-  const isPro = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isPro = checkIsPro(profile)
 
   // 2. Partager sa position actuelle avec navigator.geolocation
   const handleShareLocation = () => {

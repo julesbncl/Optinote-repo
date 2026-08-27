@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
 import { Modal } from '@/components/ui/Modal'
 import { CLASS_LEVELS } from '@/lib/constants'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 import { OFFICIAL_SPECIALTIES } from '@/lib/curriculum'
 import {
   Save,
@@ -39,6 +40,7 @@ import {
   Download,
   Trash2,
   AlertTriangle,
+  Rocket,
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -98,6 +100,8 @@ export default function SettingsPage() {
     convertedCount: number
   } | null>(null)
   const [copiedReferralLink, setCopiedReferralLink] = useState(false)
+  const [betaCodeInput, setBetaCodeInput] = useState('')
+  const [redeemingBetaCode, setRedeemingBetaCode] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const certificateInputRef = useRef<HTMLInputElement>(null)
@@ -135,6 +139,35 @@ export default function SettingsPage() {
       value ? 'Tu participes désormais aux classements 🏆' : 'Classements désactivés',
       { duration: 2500 }
     )
+  }
+
+  async function handleRedeemBetaCode() {
+    if (!betaCodeInput.trim()) return
+    setRedeemingBetaCode(true)
+    try {
+      const res = await fetch('/api/waitlist/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: betaCodeInput.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Code invalide')
+      toast.success(data.message)
+      setBetaCodeInput('')
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (p) setProfile(p)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de l’activation'
+      toast.error(message)
+    } finally {
+      setRedeemingBetaCode(false)
+    }
   }
 
   async function handleCopyReferralLink() {
@@ -585,12 +618,7 @@ export default function SettingsPage() {
     )
   }
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   return (
     <div className="max-w-2xl mx-auto space-y-2.5 sm:space-y-3.5 pb-8">
@@ -1194,6 +1222,37 @@ export default function SettingsPage() {
           <div className="h-9 rounded-lg bg-surface-secondary animate-pulse" />
         )}
       </Card>
+
+      {/* ═══════════════════════════════════════════════════════
+          4bis. CODE BETA (accès Pro gratuit les 30-31 août)
+          ═══════════════════════════════════════════════════════ */}
+      {!profile?.beta_access_redeemed_at && (
+        <Card className="p-2.5 sm:p-3 space-y-2.5 shadow-2xs">
+          <div className="border-b border-border pb-1 flex items-center gap-1.5">
+            <Rocket className="h-3.5 w-3.5 text-primary-600" />
+            <h2 className="text-xs sm:text-sm font-bold text-text-primary">Code Beta 🚀</h2>
+          </div>
+          <p className="text-[10px] text-text-secondary leading-snug">
+            Reçu un code sur la liste d&apos;attente ? Entre-le ici pour débloquer l&apos;accès Pro gratuit les 30 et 31 août.
+          </p>
+          <div className="flex gap-1.5">
+            <input
+              value={betaCodeInput}
+              onChange={(e) => setBetaCodeInput(e.target.value)}
+              placeholder="Ton code Beta"
+              className="flex-1 h-10 px-3 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-text-primary uppercase focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <Button
+              onClick={handleRedeemBetaCode}
+              isLoading={redeemingBetaCode}
+              disabled={!betaCodeInput.trim()}
+              size="sm"
+            >
+              Activer
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           5. FORMULE & ABONNEMENT (LIMITATIONS MISES EN AVANT)

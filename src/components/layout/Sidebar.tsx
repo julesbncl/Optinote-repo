@@ -19,6 +19,7 @@ import {
 import type { Profile } from '@/types/database'
 import { Avatar } from '@/components/ui/Avatar'
 import { PaywallModal } from '@/components/paywall/PaywallModal'
+import { checkIsPro } from '@/lib/hooks/useIsPro'
 
 import { Logo } from '@/components/ui/Logo'
 
@@ -41,12 +42,7 @@ export function Sidebar({ profile, onSignOut, campusBadgeCount = 0 }: SidebarPro
   const [collapsed, setCollapsed] = useState(false)
   const [paywallFeature, setPaywallFeature] = useState<'campus' | 'planning' | null>(null)
 
-  const isSubscribed = Boolean(
-    profile &&
-      (profile.is_pro === true ||
-        (['active', 'trialing'].includes(profile.subscription_status || '') &&
-          (profile.subscription_tier === 'monthly' || profile.subscription_tier === 'annual')))
-  )
+  const isSubscribed = checkIsPro(profile)
 
   return (
     <>
