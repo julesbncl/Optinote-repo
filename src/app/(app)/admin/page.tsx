@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Bug,
   Lightbulb,
+  Rocket,
 } from 'lucide-react'
 
 interface PendingVerification {
@@ -56,6 +57,13 @@ interface FeedbackEntry {
   profiles: { full_name: string | null; email: string } | null
 }
 
+interface WaitlistEntry {
+  id: string
+  email: string
+  class_level: string | null
+  created_at: string
+}
+
 const FEEDBACK_TYPE_LABELS: Record<string, { label: string; icon: typeof Bug }> = {
   bug: { label: 'Bug', icon: Bug },
   idea: { label: 'Idée', icon: Lightbulb },
@@ -79,6 +87,8 @@ export default function AdminPage() {
   const [verifications, setVerifications] = useState<PendingVerification[]>([])
   const [reports, setReports] = useState<MessageReport[]>([])
   const [feedbackEntries, setFeedbackEntries] = useState<FeedbackEntry[]>([])
+  const [waitlistCount, setWaitlistCount] = useState(0)
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -115,10 +125,11 @@ export default function AdminPage() {
 
     async function loadData() {
       try {
-        const [verifRes, reportsRes, feedbackRes] = await Promise.all([
+        const [verifRes, reportsRes, feedbackRes, waitlistRes] = await Promise.all([
           fetch('/api/admin/verifications'),
           fetch('/api/admin/reports'),
           fetch('/api/admin/feedback'),
+          fetch('/api/admin/waitlist'),
         ])
         if (verifRes.ok) {
           const data = await verifRes.json()
@@ -131,6 +142,11 @@ export default function AdminPage() {
         if (feedbackRes.ok) {
           const data = await feedbackRes.json()
           setFeedbackEntries((data.feedback || []).filter((f: FeedbackEntry) => f.status === 'new'))
+        }
+        if (waitlistRes.ok) {
+          const data = await waitlistRes.json()
+          setWaitlistCount(data.count || 0)
+          setWaitlistEntries(data.entries || [])
         }
       } catch (err) {
         console.error(err)
@@ -428,6 +444,41 @@ export default function AdminPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </Card>
+
+          {/* Liste d'attente Beta (TikTok) */}
+          <Card className="p-3.5 space-y-2.5">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <Rocket className="h-4 w-4 text-primary-600" />
+              <h2 className="text-sm font-bold text-text-primary">
+                Liste d&apos;attente Beta ({waitlistCount})
+              </h2>
+            </div>
+
+            {waitlistEntries.length === 0 ? (
+              <p className="text-xs text-text-tertiary py-3 text-center">
+                Aucune inscription pour le moment.
+              </p>
+            ) : (
+              <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                {waitlistEntries.map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border bg-surface-secondary/40 text-[11px]"
+                  >
+                    <span className="text-text-primary font-medium truncate">{w.email}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0 text-text-tertiary">
+                      {w.class_level && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-primary-50 text-primary-700 border border-primary-200 text-[9.5px] font-bold uppercase">
+                          {w.class_level}
+                        </span>
+                      )}
+                      <span>{new Date(w.created_at).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
