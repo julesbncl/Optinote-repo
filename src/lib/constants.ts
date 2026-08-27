@@ -206,7 +206,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 6.99,
     displayPrice: '6,99 €',
     billingPeriod: 'par mois',
-    stripePriceId: process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGrWM4B48KwBLvdM5LSU',
+    stripePriceId: process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGRwM4B48KWbLvdM5LSU',
     badge: undefined,
     highlighted: false,
     ctaLabel: 'Choisir l’offre Mensuelle',

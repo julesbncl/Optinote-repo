@@ -49,8 +49,12 @@ export async function POST(request: Request) {
 
     const targetPlan = PRICING_PLANS.find((p) => p.id === targetPlanId)
     const targetPriceId = targetPlan?.stripePriceId
-    if (!targetPriceId) {
-      return NextResponse.json({ error: 'Configuration de prix manquante' }, { status: 500 })
+    if (!targetPriceId || !targetPriceId.startsWith('price_')) {
+      console.error(
+        `[change-plan] Prix Stripe mal configuré pour la formule '${targetPlanId}':`,
+        targetPriceId
+      )
+      return NextResponse.json({ error: 'Configuration de prix invalide, contacte le support' }, { status: 500 })
     }
 
     const subs = await stripe.subscriptions.list({
