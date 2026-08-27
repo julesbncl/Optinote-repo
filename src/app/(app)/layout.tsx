@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -140,7 +138,7 @@ export default function AppLayout({
         <Header profile={profile} />
 
         <main className="flex-1 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 pb-20 lg:pb-4">
-          <div className="max-w-6xl mx-auto fade-in">
+          <div className="max-w-6xl mx-auto">
             {children}
           </div>
         </main>
