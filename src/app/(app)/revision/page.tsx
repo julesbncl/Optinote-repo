@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -78,6 +79,7 @@ const DEFAULT_SHEETS: RevisionSheet[] = [
 export default function RevisionPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sheets, setSheets] = useState<RevisionSheet[]>([])
   const [folders, setFolders] = useState<FolderType[]>([])
@@ -161,22 +163,18 @@ export default function RevisionPage() {
 
   async function loadData() {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
+      if (userId) {
         const [profileRes, sheetsRes, foldersRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', user.id).single(),
+          supabase.from('profiles').select('*').eq('id', userId).single(),
           supabase
             .from('revision_sheets')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .order('updated_at', { ascending: false }),
           supabase
             .from('folders')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .order('name'),
         ])
 
@@ -191,7 +189,7 @@ export default function RevisionPage() {
         let realFolders = foldersRes.data || []
         if (realFolders.length === 0) {
           const toInsert = DEFAULT_FOLDERS.map((f, idx) => ({
-            user_id: user.id,
+            user_id: userId,
             name: f.name,
             position: idx,
           }))

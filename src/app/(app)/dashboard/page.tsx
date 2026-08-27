@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import toast from 'react-hot-toast'
 import type { Subject, Grade, RevisionSheet, Schedule, Profile } from '@/types/database'
 import type { School } from '@/types/campus'
@@ -71,6 +72,7 @@ const EMPTY_PROFILE: Profile = {
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -260,33 +262,31 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    async function loadDashboard() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+    if (!userId) return
 
+    async function loadDashboard(userId: string) {
+      try {
         // 1. Récupération des données utilisateur et scolaires
-        if (user) {
+        {
           const [profileRes, subjectsRes, gradesRes, sheetsRes, scheduleRes, schoolsRes, usersRes] =
             await Promise.all([
-              supabase.from('profiles').select('*').eq('id', user.id).single(),
-              supabase.from('subjects').select('*').eq('user_id', user.id),
+              supabase.from('profiles').select('*').eq('id', userId).single(),
+              supabase.from('subjects').select('*').eq('user_id', userId),
               supabase
                 .from('grades')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .order('date', { ascending: false }),
               supabase
                 .from('revision_sheets')
                 .select('id')
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .order('updated_at', { ascending: false })
                 .limit(4),
               supabase
                 .from('schedules')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .single(),
               fetch('/api/campus/schools'),
               fetch('/api/campus/users/location'),
@@ -323,7 +323,7 @@ export default function DashboardPage() {
                       supabase
                         .from('profiles')
                         .select('*')
-                        .eq('id', user.id)
+                        .eq('id', userId)
                         .single()
                         .then(({ data: freshProfile }) => {
                           if (freshProfile) setProfile(freshProfile)
@@ -384,8 +384,8 @@ export default function DashboardPage() {
       }
     }
 
-    loadDashboard()
-  }, [supabase])
+    loadDashboard(userId)
+  }, [supabase, userId])
 
   const generalAverage =
     data?.grades && data.grades.length > 0

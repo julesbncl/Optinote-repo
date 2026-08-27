@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -88,6 +89,7 @@ const DEFAULT_MOCK_SCHEDULE: Schedule = {
 
 export default function PlanningPage() {
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [activeSchedule, setActiveSchedule] = useState<Schedule | null>(null)
   const [loading, setLoading] = useState(true)
@@ -398,26 +400,24 @@ export default function PlanningPage() {
   }
 
   useEffect(() => {
-    loadSchedule()
-  }, [])
+    if (!userId) return
+    loadSchedule(userId)
+  }, [userId])
 
-  async function loadSchedule() {
+  async function loadSchedule(userId: string) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
+      {
         const { data: pData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', userId)
           .single()
         if (pData) setProfile(pData)
 
         const { data } = await supabase
           .from('schedules')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(1)
@@ -428,8 +428,6 @@ export default function PlanningPage() {
         } else {
           setActiveSchedule(null)
         }
-      } else {
-        setActiveSchedule(null)
       }
     } catch {
       setActiveSchedule(null)

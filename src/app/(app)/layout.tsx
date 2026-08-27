@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Header } from '@/components/layout/Header'
 import { FeedbackButton } from '@/components/layout/FeedbackButton'
+import { AppProfileProvider } from '@/lib/contexts/AppProfileContext'
 import type { Profile } from '@/types/database'
 
 export default function AppLayout({
@@ -139,7 +140,9 @@ export default function AppLayout({
 
         <main className="flex-1 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 pb-20 lg:pb-4">
           <div className="max-w-6xl mx-auto">
-            {children}
+            <AppProfileProvider value={{ userId: profile?.id || null, profile, profileLoading: loading }}>
+              {children}
+            </AppProfileProvider>
           </div>
         </main>
       </div>

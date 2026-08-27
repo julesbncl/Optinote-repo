@@ -32,12 +32,14 @@ import {
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import type { School } from '@/types/campus'
 import type { Profile } from '@/types/database'
 
 export default function CampusMapPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [schools, setSchools] = useState<School[]>([])
   const [mapUsers, setMapUsers] = useState<Partial<Profile>[]>([])
@@ -170,17 +172,15 @@ export default function CampusMapPage() {
 
   // 1. Chargement des données (Profil, Lycées, Utilisateurs de la carte)
   useEffect(() => {
-    async function loadCampusMapData() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+    if (!userId) return
 
-        if (user) {
+    async function loadCampusMapData(userId: string) {
+      try {
+        {
           const { data: pData } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single()
 
           if (pData) {
@@ -245,8 +245,8 @@ export default function CampusMapPage() {
       }
     }
 
-    loadCampusMapData()
-  }, [supabase])
+    loadCampusMapData(userId)
+  }, [supabase, userId])
 
   // Action : "Je suis élève dans ce lycée"
   const handleSetUserSchool = async (school: School) => {

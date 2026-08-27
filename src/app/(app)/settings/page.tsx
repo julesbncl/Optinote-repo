@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/Switch'
 import { Modal } from '@/components/ui/Modal'
 import { CLASS_LEVELS } from '@/lib/constants'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import { OFFICIAL_SPECIALTIES } from '@/lib/curriculum'
 import {
   Save,
@@ -72,6 +73,7 @@ const DEFAULT_PROFILE: Profile = {
 export default function SettingsPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE)
   const [fullName, setFullName] = useState('')
   const [classLevel, setClassLevel] = useState<Profile['class_level']>('terminale')
@@ -232,15 +234,11 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (user) {
+        if (userId) {
           const { data } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single()
 
           if (data) {
@@ -294,7 +292,7 @@ export default function SettingsPage() {
       }
     }
     load()
-  }, [supabase])
+  }, [supabase, userId])
 
 
   // Même règle qu'à l'onboarding : 3 spécialités en Première, 2 conservées en

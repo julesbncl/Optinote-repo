@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -121,6 +122,7 @@ ${formattedBody}
 export default function NewRevisionPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { userId } = useAppProfile()
 
   const [generating, setGenerating] = useState(false)
   const [sheetTitle, setSheetTitle] = useState('')
@@ -140,15 +142,11 @@ export default function NewRevisionPage() {
   useEffect(() => {
     async function loadFolders() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (user) {
+        if (userId) {
           const { data } = await supabase
             .from('folders')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .order('position', { ascending: true })
 
           if (data && data.length > 0) {
@@ -170,7 +168,7 @@ export default function NewRevisionPage() {
       }
     }
     loadFolders()
-  }, [supabase])
+  }, [supabase, userId])
 
   async function handleCreateFolder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

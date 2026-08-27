@@ -46,6 +46,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
+import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import type { ChatChannel, Friendship, School } from '@/types/campus'
 import type { Profile } from '@/types/database'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -213,6 +214,7 @@ function CampusHubContent() {
   const schoolNameParam = searchParams.get('schoolName')
 
   const supabase = createClient()
+  const { userId } = useAppProfile()
   const [profile, setProfile] = useState<Profile>(DEFAULT_INITIAL_PROFILE)
   const [channels, setChannels] = useState<ChatChannel[]>(DEFAULT_CHANNELS)
   const [friends, setFriends] = useState<Partial<Profile>[]>([])
@@ -543,17 +545,15 @@ function CampusHubContent() {
   )
 
   useEffect(() => {
-    async function loadCampusData() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+    if (!userId) return
 
-        if (user) {
+    async function loadCampusData(userId: string) {
+      try {
+        {
           const { data: pData } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single()
 
           if (pData) {
@@ -638,7 +638,7 @@ function CampusHubContent() {
       }
     }
 
-    loadCampusData()
+    loadCampusData(userId)
 
     // Abonnement Realtime pour les nouvelles demandes d'ami
     const friendshipsChannel = supabase
@@ -694,7 +694,7 @@ function CampusHubContent() {
       supabase.removeChannel(friendshipsChannel)
       supabase.removeChannel(sessionsChannel)
     }
-  }, [supabase])
+  }, [supabase, userId])
 
   // Filtrer les canaux selon la recherche et le sujet
   const filteredChannels = useMemo(() => {
