@@ -34,18 +34,20 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
     // 2. Rate limit check
-    if (user) {
-      const rateLimit = checkRateLimit(
-        `ai:scanner-timetable:${user.id}`,
-        RATE_LIMITS.AI_CALLS_PER_MINUTE
+    const rateLimit = checkRateLimit(
+      `ai:scanner-timetable:${user.id}`,
+      RATE_LIMITS.AI_CALLS_PER_MINUTE
+    )
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Trop de requêtes. Veuillez patienter ${rateLimit.resetIn}s` },
+        { status: 429 }
       )
-      if (!rateLimit.success) {
-        return NextResponse.json(
-          { error: `Trop de requêtes. Veuillez patienter ${rateLimit.resetIn}s` },
-          { status: 429 }
-        )
-      }
     }
 
     // 3. Parse and Validate Request Payload with Zod

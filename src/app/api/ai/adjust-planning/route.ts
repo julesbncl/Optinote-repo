@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/ai/openai'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
+import { isUserSubscribed } from '@/lib/stripe/server'
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,23 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (!isUserSubscribed(profile)) {
+      return NextResponse.json(
+        {
+          error:
+            'Le Planning Intelligent IA est réservé aux membres abonnés. Passez à l’abonnement Mensuel ou Annuel pour ajuster votre planning avec l’IA !',
+          code: 'UPGRADE_REQUIRED',
+        },
+        { status: 403 }
+      )
     }
 
     const rateLimit = checkRateLimit(`ai:adjust-planning:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
