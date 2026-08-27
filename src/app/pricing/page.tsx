@@ -87,6 +87,15 @@ function PricingContent() {
       if (!res.ok) {
         throw new Error(data.error || 'Erreur lors du changement de formule')
       }
+      if (data.requiresPayment) {
+        if (data.hostedInvoiceUrl) {
+          toast('Confirme le paiement de la différence pour activer ta nouvelle formule.', { icon: '💳' })
+          window.location.href = data.hostedInvoiceUrl
+        } else {
+          toast.error(data.error || 'Le paiement n’a pas pu être confirmé.')
+        }
+        return
+      }
       toast.success(data.message || 'Formule mise à jour ! 🎉')
       setCurrentTier(planId)
     } catch (err: unknown) {

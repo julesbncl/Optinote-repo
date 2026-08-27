@@ -80,10 +80,28 @@ export async function POST(request: Request) {
         plan_tier: targetPlanId,
         billing_interval: targetPlanId === 'annual' ? 'year' : 'month',
       },
+      expand: ['latest_invoice'],
     })
 
-    // Mise à jour immédiate en base (le webhook customer.subscription.updated
-    // la confirmera aussi, mais on ne fait pas attendre l'utilisateur pour ça).
+    // Le changement de prix génère une facture de proration facturée
+    // immédiatement (carte déjà enregistrée). En Europe, ce prélèvement
+    // hors-session échoue souvent sans authentification 3D Secure — dans ce
+    // cas on ne doit ni afficher un faux succès, ni activer la formule en
+    // base : on renvoie le lien de paiement Stripe pour que l'utilisateur
+    // confirme lui-même, le webhook confirmera l'activation une fois payée.
+    const latestInvoice = (updated as any).latest_invoice as
+      | { status: string; hosted_invoice_url: string | null }
+      | null
+
+    if (latestInvoice && latestInvoice.status !== 'paid') {
+      return NextResponse.json({
+        success: false,
+        requiresPayment: true,
+        hostedInvoiceUrl: latestInvoice.hosted_invoice_url,
+        error: 'Le paiement de la différence nécessite une confirmation supplémentaire.',
+      })
+    }
+
     await supabase
       .from('profiles')
       .update({
