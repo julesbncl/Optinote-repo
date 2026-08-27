@@ -484,26 +484,6 @@ export default function DashboardPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-          FLASH DU MATIN : MESSAGE DE MOTIVATION PERSONNALISÉ
-          ═══════════════════════════════════════════════════════ */}
-      <div className="bg-gradient-to-r from-primary-50 via-indigo-50/60 to-purple-50/60 border border-primary-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs flex items-start gap-2 sm:gap-2.5">
-        <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-2xs text-sm sm:text-base">
-          ☀️
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] sm:text-xs font-black text-text-primary">{motivation.greeting}</p>
-          <p className="text-[9.5px] sm:text-[10.5px] text-text-secondary leading-snug mt-0.2">
-            {motivation.phrase}
-          </p>
-          {motivation.averageLine && (
-            <p className="text-[9px] sm:text-[10px] font-bold text-primary-700 mt-1">
-              📊 {motivation.averageLine}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════
           1. LIGNE DU HAUT : MOYENNE GÉNÉRALE & SAC À DOS NUMÉRIQUE
           ═══════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5">
@@ -894,6 +874,26 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          FLASH DU MATIN : MESSAGE DE MOTIVATION PERSONNALISÉ
+          ═══════════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-primary-50 via-indigo-50/60 to-purple-50/60 border border-primary-200/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-2xs flex items-start gap-2 sm:gap-2.5">
+        <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-2xs text-sm sm:text-base">
+          ☀️
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10.5px] sm:text-xs font-black text-text-primary">{motivation.greeting}</p>
+          <p className="text-[9.5px] sm:text-[10.5px] text-text-secondary leading-snug mt-0.2">
+            {motivation.phrase}
+          </p>
+          {motivation.averageLine && (
+            <p className="text-[9px] sm:text-[10px] font-bold text-primary-700 mt-1">
+              📊 {motivation.averageLine}
+            </p>
+          )}
+        </div>
       </div>
 
       <ProWelcomeModal isOpen={showProWelcomeModal} onClose={() => setShowProWelcomeModal(false)} />
