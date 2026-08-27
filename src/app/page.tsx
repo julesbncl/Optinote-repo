@@ -124,6 +124,19 @@ export default function LandingPage() {
                 <ArrowDown className="h-3 w-3 sm:h-4 sm:w-4" />
               </a>
             </div>
+
+            {/* Points de confiance : compacts, sans surcharger le hero */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 pt-2 sm:pt-4">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-surface border border-border text-[9.5px] sm:text-xs font-semibold text-text-secondary">
+                🛡️ Élèves vérifiés
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-surface border border-border text-[9.5px] sm:text-xs font-semibold text-text-secondary">
+                🔥 Séries quotidiennes
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-surface border border-border text-[9.5px] sm:text-xs font-semibold text-text-secondary">
+                🎓 Révise en groupe
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -175,6 +188,10 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between gap-1">
                     <span>💬 Salons entraide</span>
                     <span className="text-success-600 font-bold flex-shrink-0">Groupe</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>🎓 Sessions en direct</span>
+                    <span className="text-primary-600 font-bold flex-shrink-0">Live</span>
                   </div>
                 </div>
               </div>
@@ -316,6 +333,10 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between gap-1">
                     <span>🎯 Simulation DS</span>
                     <span className="text-warning-600 font-bold flex-shrink-0">Prévisions</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>📈 Évolution suivie</span>
+                    <span className="text-success-600 font-bold flex-shrink-0">Graphique</span>
                   </div>
                 </div>
               </div>
@@ -833,6 +854,10 @@ export default function LandingPage() {
                 <span>Passe direct à l&apos;abonnement Pro ➔</span>
               </Link>
             </div>
+
+            <p className="mt-3.5 sm:mt-6 text-[10px] sm:text-xs text-white/80">
+              🎁 Invite un ami : vous recevez chacun un mois offert.
+            </p>
           </div>
         </div>
       </section>
