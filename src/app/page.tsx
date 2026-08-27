@@ -72,7 +72,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center text-xs font-semibold text-text-secondary hover:text-text-primary px-2 sm:px-3 py-1 sm:py-2 transition-colors"
+              className="inline-flex items-center h-6.5 sm:h-9 text-[9px] sm:text-xs font-semibold text-text-secondary hover:text-text-primary px-1.5 sm:px-3 transition-colors"
             >
               Connexion
             </Link>
