@@ -159,7 +159,7 @@ export default function RevisionPage() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [userId])
 
   async function loadData() {
     try {

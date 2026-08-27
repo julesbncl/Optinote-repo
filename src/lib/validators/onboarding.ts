@@ -13,7 +13,7 @@ export const onboardingSchema = z.object({
     { message: 'Veuillez sélectionner votre horizon post-bac' }
   ),
   schoolId: z.string().uuid().nullable().optional(),
-  schoolName: z.string().max(150).optional(),
+  schoolName: z.string().max(150).nullable().optional(),
   isVisibleOnSchool: z.boolean().default(true),
 })
 

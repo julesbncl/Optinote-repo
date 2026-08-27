@@ -400,13 +400,12 @@ export default function PlanningPage() {
   }
 
   useEffect(() => {
-    if (!userId) return
-    loadSchedule(userId)
+    loadSchedule()
   }, [userId])
 
-  async function loadSchedule(userId: string) {
+  async function loadSchedule() {
     try {
-      {
+      if (userId) {
         const { data: pData } = await supabase
           .from('profiles')
           .select('*')
@@ -428,6 +427,8 @@ export default function PlanningPage() {
         } else {
           setActiveSchedule(null)
         }
+      } else {
+        setActiveSchedule(null)
       }
     } catch {
       setActiveSchedule(null)
