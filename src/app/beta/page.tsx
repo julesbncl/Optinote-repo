@@ -1,32 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { createClient } from '@/lib/supabase/client'
 import { CLASS_LEVELS, APP_NAME } from '@/lib/constants'
-import { Rocket, Copy, Check, ArrowLeft, Sparkles, PartyPopper } from 'lucide-react'
+import { Rocket, Copy, Check, ArrowLeft, Sparkles, PartyPopper, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function BetaWaitlistPage() {
-  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [classLevel, setClassLevel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [code, setCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [redeeming, setRedeeming] = useState(false)
-  const [redeemed, setRedeemed] = useState(false)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setIsLoggedIn(true)
-    })
-  }, [supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,27 +33,6 @@ export default function BetaWaitlistPage() {
       toast.error(message)
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  async function handleRedeemNow() {
-    if (!code) return
-    setRedeeming(true)
-    try {
-      const res = await fetch('/api/waitlist/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Code invalide')
-      toast.success(data.message)
-      setRedeemed(true)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de l’activation'
-      toast.error(message)
-    } finally {
-      setRedeeming(false)
     }
   }
 
@@ -168,28 +135,31 @@ export default function BetaWaitlistPage() {
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </button>
 
-              {isLoggedIn ? (
-                <Button
-                  onClick={handleRedeemNow}
-                  isLoading={redeeming}
-                  disabled={redeemed}
-                  className="w-full"
-                  rightIcon={<Sparkles className="h-4 w-4" />}
-                >
-                  {redeemed ? 'Code activé sur ton compte' : 'Activer ce code sur mon compte'}
+              <div className="text-left space-y-2 bg-surface-secondary/60 rounded-xl border border-border p-3">
+                <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wide">
+                  Comment en profiter
+                </p>
+                <ol className="space-y-1.5 text-xs text-text-secondary">
+                  <li className="flex items-center gap-2">
+                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold flex items-center justify-center">1</span>
+                    <span>Va sur <strong className="text-text-primary">optinote.fr</strong></span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold flex items-center justify-center">2</span>
+                    <span>Crée ton compte gratuitement</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold flex items-center justify-center">3</span>
+                    <span>Dans Paramètres, entre ton code pour débloquer l’accès Pro les 30-31 août</span>
+                  </li>
+                </ol>
+              </div>
+
+              <Link href="/">
+                <Button className="w-full" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                  Aller sur OptiNote
                 </Button>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-text-tertiary">
-                    Crée ton compte OptiNote, puis entre ce code dans Paramètres pour activer ton accès.
-                  </p>
-                  <Link href="/register">
-                    <Button className="w-full" rightIcon={<Sparkles className="h-4 w-4" />}>
-                      Créer mon compte
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              </Link>
             </div>
           )}
         </Card>
