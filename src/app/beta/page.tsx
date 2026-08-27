@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CLASS_LEVELS, APP_NAME } from '@/lib/constants'
-import { Rocket, Copy, Check, ArrowLeft, Sparkles, PartyPopper, ArrowRight } from 'lucide-react'
+import { CLASS_LEVELS, APP_NAME, BETA_ACCESS_WINDOW_START } from '@/lib/constants'
+import { Rocket, Copy, Check, ArrowLeft, Sparkles, PartyPopper, ArrowRight, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function BetaWaitlistPage() {
+  const siteIsOpen = new Date() >= BETA_ACCESS_WINDOW_START
   const [email, setEmail] = useState('')
   const [classLevel, setClassLevel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -155,11 +156,22 @@ export default function BetaWaitlistPage() {
                 </ol>
               </div>
 
-              <Link href="/">
-                <Button className="w-full" rightIcon={<ArrowRight className="h-4 w-4" />}>
-                  Aller sur OptiNote
-                </Button>
-              </Link>
+              {siteIsOpen ? (
+                <Link href="/">
+                  <Button className="w-full" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                    Aller sur OptiNote
+                  </Button>
+                </Link>
+              ) : (
+                <div className="space-y-1.5">
+                  <Button className="w-full" disabled leftIcon={<Lock className="h-4 w-4" />}>
+                    Disponible le 30 août
+                  </Button>
+                  <p className="text-[10px] text-text-tertiary">
+                    Reviens ici dès le 30 août pour rejoindre le site et activer ton code.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </Card>
