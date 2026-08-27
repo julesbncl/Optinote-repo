@@ -176,6 +176,11 @@ export function formatPrice(price: number): string {
   return price.toFixed(2).replace('.', ',') + ' €'
 }
 
+// Les variables d'environnement Stripe (configurées à la main sur Vercel) finissent
+// régulièrement avec un espace ou un saut de ligne collé par erreur, ce qui rend
+// l'ID invalide aux yeux de Stripe sans que ce soit visible dans le dashboard.
+const cleanEnvPriceId = (value: string | undefined) => value?.trim() || undefined
+
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
@@ -206,7 +211,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 6.99,
     displayPrice: '6,99 €',
     billingPeriod: 'par mois',
-    stripePriceId: process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGRwM4B48KWbLvdM5LSU',
+    stripePriceId: cleanEnvPriceId(process.env.STRIPE_PRICE_ID) || cleanEnvPriceId(process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY) || 'price_1U6SrGRwM4B48KWbLvdM5LSU',
     badge: undefined,
     highlighted: false,
     ctaLabel: 'Choisir l’offre Mensuelle',
@@ -229,7 +234,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     annualBillingTotal: 'Soit 59,88 € facturés pour 1 an (2 mois offerts)',
     equivalentMonthlyPrice: '4,99 € / mois',
     savingsBadge: 'Économise ~29% (2 mois offerts)',
-    stripePriceId: process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1U7H5KRwM4B48KWbDoLCFGzq',
+    stripePriceId: cleanEnvPriceId(process.env.STRIPE_PRICE_ID_ANNUAL) || cleanEnvPriceId(process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL) || 'price_1U7H5KRwM4B48KWbDoLCFGzq',
     badge: 'MEILLEURE OFFRE 🔥',
     highlighted: true,
     ctaLabel: 'Profiter de l’offre Annuelle (59,88 €)',

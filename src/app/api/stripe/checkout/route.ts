@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
     const interval = isAnnual ? 'year' : 'month'
 
     const envPriceId = isAnnual
-      ? (process.env.STRIPE_PRICE_ID_ANNUAL || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1U7H5KRwM4B48KWbDoLCFGzq')
-      : (process.env.STRIPE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1U6SrGrWM4B48KwBLvdM5LSU')
+      ? (process.env.STRIPE_PRICE_ID_ANNUAL?.trim() || process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL?.trim() || 'price_1U7H5KRwM4B48KWbDoLCFGzq')
+      : (process.env.STRIPE_PRICE_ID?.trim() || process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY?.trim() || 'price_1U6SrGRwM4B48KWbLvdM5LSU')
 
     // Le prix ne doit JAMAIS venir du client (body.priceId) : un ID de prix arbitraire
     // permettrait de payer un montant différent tout en recevant l'accès Pro complet,
