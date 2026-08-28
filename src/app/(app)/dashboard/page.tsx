@@ -78,6 +78,26 @@ export default function DashboardPage() {
   const [isVisible, setIsVisible] = useState(true)
   const [streak, setStreak] = useState({ current: 0, longest: 0 })
   const [showProWelcomeModal, setShowProWelcomeModal] = useState(false)
+  const [creatorSummary, setCreatorSummary] = useState<{ code: string; commissionDueCents: number } | null>(null)
+
+  // Bannière "Espace Créateur" — invisible pour 99% des lycéens, donc chargée à
+  // part plutôt que mêlée au Promise.all principal du tableau de bord.
+  useEffect(() => {
+    async function loadCreatorSummary() {
+      try {
+        const res = await fetch('/api/creator/stats')
+        if (!res.ok) return
+        const resData = await res.json()
+        const first = resData.creators?.[0]
+        if (first) {
+          setCreatorSummary({ code: first.code, commissionDueCents: first.commission_due_cents || 0 })
+        }
+      } catch {
+        // silencieux : la bannière ne s'affiche simplement pas
+      }
+    }
+    loadCreatorSummary()
+  }, [])
 
   // États liés aux amis (pour afficher le bon statut dans "Camarades de spécialité")
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
@@ -481,6 +501,34 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          BANDEAU ESPACE CRÉATEUR — visible uniquement pour les comptes
+          reliés à un code partenaire (invisible pour les autres lycéens)
+          ═══════════════════════════════════════════════════════ */}
+      {creatorSummary && (
+        <Link
+          href="/creator"
+          className="group flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-primary-600 shadow-md hover:shadow-lg transition-all"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-black text-white leading-tight">
+                Espace Créateur — code {creatorSummary.code}
+              </p>
+              <p className="text-[9.5px] sm:text-[10.5px] text-white/85 leading-tight">
+                {creatorSummary.commissionDueCents > 0
+                  ? `${(creatorSummary.commissionDueCents / 100).toFixed(2).replace('.', ',')} € de commission à venir`
+                  : 'Suis tes abonnés et ta commission'}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-white/90 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           1. LIGNE DU HAUT : MOYENNE GÉNÉRALE & SAC À DOS NUMÉRIQUE
