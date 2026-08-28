@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
 import {
   PRICING_PLANS,
@@ -7,6 +8,7 @@ import {
   PROMO_DISCOUNT_PERCENT,
   getDiscountedPrice,
 } from '@/lib/constants'
+import type { CreatorCode } from '@/types/database'
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,12 +63,30 @@ export async function POST(request: NextRequest) {
     const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim().toUpperCase() : undefined
     const isPromoValid = Boolean(promoCode && (VALID_PROMO_CODES as readonly string[]).includes(promoCode))
 
+    // Code créateur (programme partenaire) : recherché uniquement si ce n'est
+    // pas déjà un code promo statique. La table n'est lisible par un client
+    // que pour son propre code (RLS), donc cette recherche par valeur passe
+    // par la clé de service — c'est une simple validation de code saisi par
+    // l'utilisateur, pas un accès admin.
+    let creatorCode: CreatorCode | null = null
+    if (!isPromoValid && promoCode) {
+      const admin = createAdminClient()
+      const { data } = await admin
+        .from('creator_codes')
+        .select('*')
+        .eq('code', promoCode)
+        .eq('is_active', true)
+        .maybeSingle()
+      creatorCode = data
+    }
+
     // Parrainage : la récompense n'est jamais appliquée sur la base d'un flag
     // envoyé par le client — on vérifie nous-mêmes, côté serveur, qu'un
     // parrainage "pending" existe réellement pour cet utilisateur avant
-    // d'accorder quoi que ce soit. Non cumulable avec un code promo manuel.
+    // d'accorder quoi que ce soit. Non cumulable avec un code promo manuel
+    // ou un code créateur.
     let referralDiscount: 'referred' | 'referrer_credit' | null = null
-    if (!isPromoValid && process.env.STRIPE_REFERRAL_COUPON_ID) {
+    if (!isPromoValid && !creatorCode && process.env.STRIPE_REFERRAL_COUPON_ID) {
       const { data: pendingReferral } = await supabase
         .from('referrals')
         .select('id')
@@ -81,8 +101,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const finalPrice = isPromoValid
-      ? getDiscountedPrice(selectedPlan.price, PROMO_DISCOUNT_PERCENT)
+    const activeDiscountPercent = isPromoValid
+      ? PROMO_DISCOUNT_PERCENT
+      : creatorCode
+      ? creatorCode.discount_percent
+      : 0
+
+    const finalPrice = activeDiscountPercent > 0
+      ? getDiscountedPrice(selectedPlan.price, activeDiscountPercent)
       : selectedPlan.price
 
     const isAnnual = selectedPlan.id === 'annual'
@@ -95,7 +121,7 @@ export async function POST(request: NextRequest) {
     // Le prix ne doit JAMAIS venir du client (body.priceId) : un ID de prix arbitraire
     // permettrait de payer un montant différent tout en recevant l'accès Pro complet,
     // car le webhook se base sur metadata.plan_tier et non sur le prix réellement facturé.
-    const priceId = !isPromoValid ? (selectedPlan.stripePriceId || envPriceId) : undefined
+    const priceId = (!isPromoValid && !creatorCode) ? (selectedPlan.stripePriceId || envPriceId) : undefined
 
     const forwardedHost = request.headers.get('x-forwarded-host')
     const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
@@ -110,7 +136,7 @@ export async function POST(request: NextRequest) {
       price_data: {
         currency: 'eur',
         product_data: {
-          name: `OptiNote ${selectedPlan.name}${isPromoValid ? ` (-${PROMO_DISCOUNT_PERCENT}% Promo ${promoCode})` : ''}`,
+          name: `OptiNote ${selectedPlan.name}${activeDiscountPercent > 0 ? ` (-${activeDiscountPercent}% ${creatorCode ? `Créateur ${creatorCode.creator_name}` : `Promo ${promoCode}`})` : ''}`,
           description: selectedPlan.description || 'Abonnement OptiNote Pro',
         },
         unit_amount: Math.round(finalPrice * 100),
@@ -132,7 +158,8 @@ export async function POST(request: NextRequest) {
         plan_tier: selectedPlan.id,
         billing_interval: interval,
         promo_code: promoCode || 'none',
-        discount_percent: isPromoValid ? '15%' : '0%',
+        discount_percent: activeDiscountPercent > 0 ? `${activeDiscountPercent}%` : '0%',
+        creator_code_id: creatorCode?.id || '',
         referral_pending: referralDiscount === 'referred' ? 'true' : 'false',
         consume_referral_credit: referralDiscount === 'referrer_credit' ? 'true' : 'false',
       },
@@ -142,6 +169,7 @@ export async function POST(request: NextRequest) {
           plan_tier: selectedPlan.id,
           billing_interval: interval,
           promo_code: promoCode || 'none',
+          creator_code_id: creatorCode?.id || '',
         },
       },
       billing_address_collection: 'auto' as const,
@@ -168,9 +196,10 @@ export async function POST(request: NextRequest) {
           ...sessionParamsBase,
           line_items: [{ price: priceId, quantity: 1 }],
         })
-      } catch (stripeErr: any) {
+      } catch (stripeErr: unknown) {
+        const stripeErrMessage = stripeErr instanceof Error ? stripeErr.message : 'erreur inconnue'
         console.warn(
-          `[Stripe Checkout] L'ID de prix '${priceId}' n'a pas été trouvé dans le mode actif de la clé Stripe (${stripeErr.message}). Bascule automatique sur la tarification dynamique (price_data)...`
+          `[Stripe Checkout] L'ID de prix '${priceId}' n'a pas été trouvé dans le mode actif de la clé Stripe (${stripeErrMessage}). Bascule automatique sur la tarification dynamique (price_data)...`
         )
       }
     }
@@ -184,10 +213,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ url: session.url })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Stripe Checkout Error:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de l’initialisation du paiement' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de l’initialisation du paiement' },
       { status: 500 }
     )
   }

@@ -150,7 +150,7 @@ export function SnapMapDemo() {
                   👩🏻‍🎓
                 </div>
                 <div className="bg-white/95 px-1 py-0.2 rounded shadow-xs text-left hidden xs:block">
-                  <p className="text-[7px] sm:text-[8.5px] font-bold text-slate-900 leading-tight">Camille</p>
+                  <p className="text-[8px] sm:text-[9px] font-bold text-slate-900 leading-tight">Camille</p>
                 </div>
               </div>
             </div>
@@ -165,7 +165,7 @@ export function SnapMapDemo() {
                   👥
                 </div>
                 <div className="bg-white/95 px-1 py-0.2 rounded shadow-xs mt-0.5">
-                  <p className="text-[7px] sm:text-[8.5px] font-bold text-primary-700 leading-tight">Spé Maths</p>
+                  <p className="text-[8px] sm:text-[9px] font-bold text-primary-700 leading-tight">Spé Maths</p>
                 </div>
               </div>
             </div>
@@ -186,15 +186,15 @@ export function SnapMapDemo() {
             <div className="flex items-center gap-1 min-w-0">
               <span className="text-[10px] sm:text-sm">{selectedSpot.avatar}</span>
               <div className="truncate">
-                <p className="font-bold text-[7.5px] sm:text-[10px] text-slate-900 leading-tight truncate">
+                <p className="font-bold text-[8.5px] sm:text-[10px] text-slate-900 leading-tight truncate">
                   {selectedSpot.name}
                 </p>
-                <p className="text-[6.5px] sm:text-[8.5px] text-slate-600 truncate">
+                <p className="text-[7.5px] sm:text-[8.5px] text-slate-600 truncate">
                   {selectedSpot.activity}
                 </p>
               </div>
             </div>
-            <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-[7px] sm:text-[8.5px] flex-shrink-0">
+            <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-[8px] sm:text-[9px] flex-shrink-0">
               Actif ✓
             </span>
           </div>

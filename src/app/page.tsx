@@ -34,6 +34,16 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-surface selection:bg-primary-100 selection:text-primary-900">
       {/* ═══════════════════════════════════════════════════════
+          BANDEAU BETA
+          ═══════════════════════════════════════════════════════ */}
+      <Link
+        href="/beta"
+        className="block bg-gradient-to-r from-primary-600 to-accent-600 text-white text-center py-1 px-2 text-[9px] sm:text-xs font-semibold hover:opacity-90 transition-opacity"
+      >
+        🚀 Beta · Lancement officiel le 1er septembre — Rejoins la liste d&apos;attente pour un accès Pro gratuit →
+      </Link>
+
+      {/* ═══════════════════════════════════════════════════════
           NAVBAR (COMPACTE MOBILE & LUXE DESKTOP)
           ═══════════════════════════════════════════════════════ */}
       <nav className="sticky top-0 z-50 bg-surface/90 backdrop-blur-md border-b border-border">

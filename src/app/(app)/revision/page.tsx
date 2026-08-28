@@ -157,10 +157,6 @@ export default function RevisionPage() {
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [userId])
-
   async function loadData() {
     try {
       if (userId) {
@@ -224,6 +220,14 @@ export default function RevisionPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // loadData() ne fait du travail synchrone (localStorage) que dans sa branche
+    // "pas d'utilisateur" — nécessairement dans l'effect (localStorage n'existe pas
+    // côté serveur, donc pas d'équivalent "pendant le rendu" possible ici).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, [userId])
 
   async function handleAddFolder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -633,7 +637,7 @@ export default function RevisionPage() {
                   <span className="text-[10px] sm:text-[11px] font-bold truncate">{folder.name}</span>
                 </button>
 
-                <div className="flex items-center gap-0.5 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span
                     className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded-full ${
                       isSelected
@@ -649,10 +653,10 @@ export default function RevisionPage() {
                     onClick={() =>
                       setDeleteTarget({ type: 'folder', id: folder.id })
                     }
-                    className="text-text-tertiary hover:text-error-600 p-0.5 rounded cursor-pointer leading-none text-[10px]"
+                    className="text-text-tertiary hover:text-error-600 p-1.5 -m-0.5 rounded cursor-pointer leading-none"
                     title="Supprimer ce dossier"
                   >
-                    ×
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </div>
               </div>

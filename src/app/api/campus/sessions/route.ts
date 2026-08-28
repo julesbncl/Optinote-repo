@@ -43,7 +43,7 @@ export async function GET() {
       participants = data || []
     }
 
-    const mapped = sessions.map((s: any) => {
+    const mapped = sessions.map((s) => {
       const sessionParticipants = participants.filter((p) => p.session_id === s.id)
       return {
         id: s.id,
@@ -150,8 +150,8 @@ export async function POST(request: Request) {
         joined: true,
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in study sessions POST:', error)
-    return NextResponse.json({ error: error?.message || 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur serveur' }, { status: 500 })
   }
 }

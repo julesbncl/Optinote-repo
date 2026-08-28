@@ -740,7 +740,7 @@ export default function SettingsPage() {
               <select
                 name="classLevel"
                 value={classLevel || 'terminale'}
-                onChange={(e) => setClassLevel(e.target.value as any)}
+                onChange={(e) => setClassLevel(e.target.value as Profile['class_level'])}
                 className="w-full h-7.5 px-2 text-xs bg-surface border border-border rounded-lg text-text-primary focus:border-primary-400 focus:outline-hidden transition-all"
               >
                 {CLASS_LEVELS.map((level) => (

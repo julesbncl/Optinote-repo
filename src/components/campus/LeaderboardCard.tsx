@@ -19,8 +19,16 @@ export function LeaderboardCard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  // Réinitialise le chargement pendant le rendu à chaque changement d'onglet
+  // (plutôt qu'un setState synchrone dans l'effect), qui ne garde alors que le
+  // fetch asynchrone lui-même.
+  const [prevType, setPrevType] = useState(type)
+  if (type !== prevType) {
+    setPrevType(type)
     setLoading(true)
+  }
+
+  useEffect(() => {
     fetch(`/api/campus/leaderboard?type=${type}`)
       .then((r) => (r.ok ? r.json() : { entries: [] }))
       .then((data) => setEntries(data.entries || []))

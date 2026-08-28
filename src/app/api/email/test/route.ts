@@ -75,10 +75,10 @@ export async function POST(request: NextRequest) {
       messageId: result.messageId,
       latencyMs: result.latencyMs,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur API Email:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur interne du serveur' },
+      { error: error instanceof Error ? error.message : 'Erreur interne du serveur' },
       { status: 500 }
     )
   }

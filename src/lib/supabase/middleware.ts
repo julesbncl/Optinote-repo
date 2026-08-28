@@ -94,7 +94,7 @@ export async function updateSession(request: NextRequest) {
   // ═════════════════════════════════════════════════════════
   // 2. Initialisation Supabase SSR avec Cookies Sécurisés
   // ═════════════════════════════════════════════════════════
-  let supabaseResponse = NextResponse.next({
+  const supabaseResponse = NextResponse.next({
     request,
   })
 
@@ -140,8 +140,8 @@ export async function updateSession(request: NextRequest) {
     '/planning',
     '/revision',
     '/settings',
-    '/messages',
     '/admin',
+    '/creator',
     '/onboarding',
   ]
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))

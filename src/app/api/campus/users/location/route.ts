@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateUserLocationSchema } from '@/lib/validators/campus'
+import type { Profile } from '@/types/database'
 
 // Même fenêtre "active" que /api/campus/sessions
 const ACTIVE_SESSION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
@@ -52,13 +53,13 @@ export async function GET() {
     }
 
     const mappedUsers = dbUsers
-      .filter((u: any) => {
+      .filter((u: Partial<Profile>) => {
         if (u.is_visible_on_school === false) return false
         if (u.email && (u.email.includes('mock') || u.email.includes('test.com') || u.email === 'thomas.dubois@lycee.fr')) return false
         return true
       })
-      .map((u: any) => {
-        const prefs = typeof u.preferences === 'object' && u.preferences !== null ? u.preferences : {}
+      .map((u: Partial<Profile> & { id: string }) => {
+        const prefs: Record<string, unknown> = typeof u.preferences === 'object' && u.preferences !== null ? u.preferences : {}
         const rawLat = prefs.latitude ?? u.latitude ?? null
         const rawLng = prefs.longitude ?? u.longitude ?? null
         const lat = rawLat !== null && !isNaN(Number(rawLat)) ? Number(rawLat) : null
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
       ...(bio !== undefined ? { bio: bio.trim() } : {}),
     }
 
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Partial<Profile> = {
       preferences: updatedPrefs,
       updated_at: new Date().toISOString(),
     }
@@ -175,10 +176,10 @@ export async function POST(request: NextRequest) {
         is_visible: data.is_visible_on_school,
       },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Location update error:', err)
     return NextResponse.json(
-      { error: err.message || 'Erreur lors de la mise à jour de la position' },
+      { error: err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la position' },
       { status: 500 }
     )
   }

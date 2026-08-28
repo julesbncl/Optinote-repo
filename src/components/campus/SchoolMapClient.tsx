@@ -492,6 +492,10 @@ export default function SchoolMapClient({
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Garde d'hydratation pour Leaflet (non SSR-safe) : par construction, le premier
+    // rendu client doit être identique au rendu serveur, donc ce flip ne peut se
+    // faire que dans un effect (aucun équivalent "pendant le rendu" n'existe ici).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
   }, [])
 

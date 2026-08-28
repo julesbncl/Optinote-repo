@@ -415,11 +415,18 @@ function CampusHubContent() {
   }, [revisionSessions, sessionsFilter, sessionsSearch])
 
   // Synchronisation et recherche en direct des utilisateurs dans Supabase
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<Partial<Profile>[]>([])
+
+  // Réinitialise les résultats pendant le rendu quand la recherche est vidée
+  // (plutôt qu'un setState synchrone dans l'effect ci-dessous).
+  const [prevMobilePeerSearch, setPrevMobilePeerSearch] = useState(mobilePeerSearch)
+  if (mobilePeerSearch !== prevMobilePeerSearch) {
+    setPrevMobilePeerSearch(mobilePeerSearch)
+    if (!mobilePeerSearch.trim()) setSearchResults([])
+  }
 
   useEffect(() => {
     if (!mobilePeerSearch.trim()) {
-      setSearchResults([])
       return
     }
 
@@ -441,8 +448,20 @@ function CampusHubContent() {
   }, [mobilePeerSearch])
 
   // Fusion des utilisateurs réels de Supabase et des résultats de recherche (hors utilisateur connecté)
+  interface PeerCard {
+    id: string
+    name: string
+    email?: string
+    avatar: string
+    school: string
+    class_level: string
+    specialties: string[]
+    target: string
+    is_verified: boolean
+  }
+
   const allAvailablePeers = useMemo(() => {
-    const list: any[] = []
+    const list: PeerCard[] = []
     const seenIds = new Set<string>()
     const currentId = profile?.id
     const currentEmail = profile?.email?.toLowerCase()
@@ -467,18 +486,18 @@ function CampusHubContent() {
 
     // 2. Utilisateurs réels chargés depuis la base de données
     mapUsers.forEach((u) => {
-      if (u.id && u.id !== currentId && (u as any).email?.toLowerCase() !== currentEmail && !seenIds.has(u.id)) {
+      if (u.id && u.id !== currentId && u.email?.toLowerCase() !== currentEmail && !seenIds.has(u.id)) {
         seenIds.add(u.id)
         list.push({
           id: u.id,
-          name: u.full_name || (u as any).email?.split('@')[0] || 'Lycéen',
-          email: (u as any).email,
+          name: u.full_name || u.email?.split('@')[0] || 'Lycéen',
+          email: u.email,
           avatar: (u.full_name || 'L')[0].toUpperCase(),
           school: u.school_name || 'Lycée',
           class_level: u.class_level || 'terminale',
           specialties: Array.isArray(u.specialties) ? u.specialties : [],
           target: u.post_bac_target || 'Orientation Post-Bac',
-          is_verified: Boolean(u.is_verified || (u as any).is_pro),
+          is_verified: Boolean(u.is_verified || u.is_pro),
         })
       }
     })
@@ -857,8 +876,8 @@ function CampusHubContent() {
         icon: '🚀',
         duration: 4000,
       })
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la création du groupe')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création du groupe')
     } finally {
       setCreating(false)
     }

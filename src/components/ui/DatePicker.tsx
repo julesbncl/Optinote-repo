@@ -74,18 +74,21 @@ export function DatePicker({
 
   const selectedDateStr = controlledValue !== undefined ? controlledValue : internalValue
 
-  useEffect(() => {
-    if (controlledValue !== undefined) {
-      setInternalValue(controlledValue)
-      if (controlledValue) {
-        const d = new Date(controlledValue)
-        if (!isNaN(d.getTime())) {
-          setViewYear(d.getFullYear())
-          setViewMonth(d.getMonth())
-        }
+  // Recalage pendant le rendu (plutôt qu'un effect) quand la prop contrôlée change,
+  // conformément au pattern React recommandé pour ce cas précis — évite un re-render
+  // en cascade tout en gardant le même comportement.
+  const [prevControlledValue, setPrevControlledValue] = useState(controlledValue)
+  if (controlledValue !== undefined && controlledValue !== prevControlledValue) {
+    setPrevControlledValue(controlledValue)
+    setInternalValue(controlledValue)
+    if (controlledValue) {
+      const d = new Date(controlledValue)
+      if (!isNaN(d.getTime())) {
+        setViewYear(d.getFullYear())
+        setViewMonth(d.getMonth())
       }
     }
-  }, [controlledValue])
+  }
 
   // Click outside listener
   useEffect(() => {

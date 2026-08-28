@@ -104,8 +104,8 @@ export async function POST(request: Request) {
           action_type: 'verify_certificate',
           tokens_used: completion.usage?.total_tokens || 0,
         })
-      } catch (aiErr: any) {
-        console.error('Certificate vision analysis failed:', aiErr?.message)
+      } catch (aiErr: unknown) {
+        console.error('Certificate vision analysis failed:', aiErr instanceof Error ? aiErr.message : String(aiErr))
         analysis = null
       }
     }
@@ -164,10 +164,10 @@ export async function POST(request: Request) {
       note: verificationNote,
       profile: updatedProfile,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Certificate verification error:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur lors de la vérification du certificat' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de la vérification du certificat' },
       { status: 500 }
     )
   }

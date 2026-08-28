@@ -9,6 +9,21 @@ import { scannerTimetableSchema } from '@/lib/validators/ai'
 
 export const maxDuration = 60 // 60s timeout for vision processing
 
+// Forme brute d'un créneau tel que renvoyé par le modèle de vision IA
+// (champs anglais ou français selon la réponse du modèle — voir PROMPTS.scannerTimetable)
+interface RawTimetableItem {
+  day?: number
+  jour?: number
+  startTime?: string
+  heureDebut?: string
+  endTime?: string
+  heureFin?: string
+  subject?: string
+  matiere?: string
+  task?: string
+  tache?: string
+}
+
 // Nettoie et formate les heures (ex: "8h00" -> "08:00", "8:00" -> "08:00")
 function normalizeTimeString(raw: string, defaultTime: string): string {
   if (!raw || typeof raw !== 'string') return defaultTime
@@ -105,7 +120,7 @@ export async function POST(request: Request) {
           }
 
           // Validation & Sanitization des créneaux
-          const rawTimetable = Array.isArray(parsed.timetable)
+          const rawTimetable: RawTimetableItem[] = Array.isArray(parsed.timetable)
             ? parsed.timetable
             : Array.isArray(parsed.creneaux)
             ? parsed.creneaux
@@ -113,25 +128,25 @@ export async function POST(request: Request) {
 
           const validatedTimetable = rawTimetable
             .filter(
-              (item: any) =>
+              (item) =>
                 (typeof item.day === 'number' || typeof item.jour === 'number') &&
-                (item.day !== undefined ? item.day >= 0 && item.day <= 6 : item.jour >= 0 && item.jour <= 6) &&
+                (item.day !== undefined ? item.day >= 0 && item.day <= 6 : (item.jour as number) >= 0 && (item.jour as number) <= 6) &&
                 (typeof item.startTime === 'string' || typeof item.heureDebut === 'string') &&
                 (typeof item.endTime === 'string' || typeof item.heureFin === 'string') &&
                 (typeof item.subject === 'string' || typeof item.matiere === 'string')
             )
-            .map((item: any) => ({
-              day: typeof item.day === 'number' ? item.day : item.jour,
-              startTime: normalizeTimeString(item.startTime || item.heureDebut, '08:00'),
-              endTime: normalizeTimeString(item.endTime || item.heureFin, '10:00'),
+            .map((item) => ({
+              day: typeof item.day === 'number' ? item.day : (item.jour as number),
+              startTime: normalizeTimeString((item.startTime || item.heureDebut) as string, '08:00'),
+              endTime: normalizeTimeString((item.endTime || item.heureFin) as string, '10:00'),
               subject: (item.subject || item.matiere || '').trim(),
               task: (item.task || item.tache || 'Cours obligatoire').trim(),
               type: 'class' as const,
             }))
-            .filter((s: any) => s.subject.length > 0)
+            .filter((s) => s.subject.length > 0)
 
           // Tri chronologique : Jour (0 à 6) puis heure de début
-          validatedTimetable.sort((a: any, b: any) => {
+          validatedTimetable.sort((a, b) => {
             if (a.day !== b.day) return a.day - b.day
             return a.startTime.localeCompare(b.startTime)
           })
@@ -143,7 +158,7 @@ export async function POST(request: Request) {
             summary: parsed.summary || `${validatedTimetable.length} cours officiels extraits avec succès.`,
           })
         }
-      } catch (aiErr: any) {
+      } catch (aiErr: unknown) {
         console.error('[Scanner Timetable AI Error]:', aiErr)
       }
     }
@@ -171,10 +186,10 @@ export async function POST(request: Request) {
       detectedClassLevel: 'Lycée',
       summary: '13 cours officiels extraits avec succès.',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API /api/ai/scanner-timetable error:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur lors de l’analyse de l’emploi du temps.' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de l’analyse de l’emploi du temps.' },
       { status: 500 }
     )
   }

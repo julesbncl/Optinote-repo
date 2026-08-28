@@ -55,10 +55,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: false, message: 'Paiement non finalisé' })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Verify session error:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur de vérification' },
+      { error: error instanceof Error ? error.message : 'Erreur de vérification' },
       { status: 500 }
     )
   }

@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Forme (partielle) d'un enregistrement de l'API data.education.gouv.fr —
+// tous les champs sont optionnels côté API externe, d'où l'usage défensif
+// (fallbacks `||`) dans le mapping ci-dessous.
+interface EducationApiRecord {
+  identifiant_de_l_etablissement?: string
+  nom_etablissement?: string
+  type_etablissement?: string
+  nom_commune?: string
+  code_postal?: string
+  libelle_academie?: string
+  nom_academie?: string
+  latitude?: number
+  longitude?: number
+  position?: { lat?: number; lon?: number }
+}
+
 // Seed fallback data au cas où l'API externe est injoignable
 const DEFAULT_SCHOOLS = [
   { id: 'sch-01', name: 'Lycée Henri IV', city: 'Paris (5e)', postal_code: '75005', academy: 'Académie de Paris', latitude: 48.8458, longitude: 2.3486, students_count: 148 },
@@ -47,10 +63,10 @@ export async function GET(request: NextRequest) {
 
         if (response.ok) {
           const data = await response.json()
-          const records = data.results || []
+          const records: EducationApiRecord[] = data.results || []
 
           const schoolsFromApi = records
-            .map((r: any) => {
+            .map((r) => {
               const lat = r.latitude || r.position?.lat || null
               const lon = r.longitude || r.position?.lon || null
               if (!lat || !lon || !r.nom_etablissement) return null

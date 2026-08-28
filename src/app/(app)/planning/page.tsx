@@ -36,7 +36,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { compressImage } from '@/lib/utils/image-compression'
-import type { Schedule, Profile } from '@/types/database'
+import type { Schedule, Profile, PlanningSlot } from '@/types/database'
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const SHORT_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -82,7 +82,7 @@ const DEFAULT_MOCK_SCHEDULE: Schedule = {
 
     // SAMEDI
     { day: 5, startTime: '10:00', endTime: '11:30', subject: 'Mathématiques', task: 'Synthèse du week-end', type: 'study' },
-  ] as any,
+  ] as PlanningSlot[],
   status: 'active',
   created_at: new Date().toISOString(),
 }
@@ -121,8 +121,8 @@ export default function PlanningPage() {
 
     setSavingSlot(true)
     try {
-      const rawPlan = (activeSchedule?.generated_plan as Array<any>) || []
-      let newPlan: any[]
+      const rawPlan = activeSchedule?.generated_plan || []
+      let newPlan: PlanningSlot[]
       const resolvedSubject =
         editingSlot.type === 'other' && editingSlot.activity
           ? editingSlot.activity
@@ -216,7 +216,7 @@ export default function PlanningPage() {
     if (!activeSchedule) return
     setSavingSlot(true)
     try {
-      const rawPlan = (activeSchedule.generated_plan as Array<any>) || []
+      const rawPlan = activeSchedule.generated_plan || []
       const newPlan = rawPlan.filter((_, idx) => idx !== slotIndex)
 
       const {
@@ -332,14 +332,14 @@ export default function PlanningPage() {
       }
 
       const data = await res.json()
-      const newClasses: any[] = data.timetable || []
+      const newClasses: PlanningSlot[] = data.timetable || []
 
       if (newClasses.length === 0) {
         throw new Error('Aucun cours n’a pu être extrait. Assure-toi que la photo est nette.')
       }
 
-      const existingPlan = (activeSchedule?.generated_plan as Array<any>) || []
-      let mergedPlan: any[]
+      const existingPlan = activeSchedule?.generated_plan || []
+      let mergedPlan: PlanningSlot[]
 
       if (replaceExistingClassesOnly) {
         const nonClasses = existingPlan.filter((s) => s.type !== 'class')
@@ -391,42 +391,34 @@ export default function PlanningPage() {
       toast.success(`✨ ${newClasses.length} cours officiels importés et positionnés !`)
       setShowScanModal(false)
       handleResetScanPhoto()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      toast.error(err.message || 'Échec de l’analyse automatique.')
+      toast.error(err instanceof Error ? err.message : 'Échec de l’analyse automatique.')
     } finally {
       setScanningTimetable(false)
     }
   }
 
-  useEffect(() => {
-    loadSchedule()
-  }, [userId])
-
   async function loadSchedule() {
     try {
-      if (userId) {
-        const { data: pData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-        if (pData) setProfile(pData)
+      const { data: pData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      if (pData) setProfile(pData)
 
-        const { data } = await supabase
-          .from('schedules')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+      const { data } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-        if (data && data.generated_plan) {
-          setActiveSchedule(data)
-        } else {
-          setActiveSchedule(null)
-        }
+      if (data && data.generated_plan) {
+        setActiveSchedule(data)
       } else {
         setActiveSchedule(null)
       }
@@ -436,6 +428,23 @@ export default function PlanningPage() {
       setLoading(false)
     }
   }
+
+  // Réinitialise pendant le rendu quand il n'y a pas (ou plus) d'utilisateur
+  // (plutôt qu'un setState synchrone dans l'effect, qui ne garde alors que l'appel
+  // asynchrone à loadSchedule). Valeurs constantes : React ignore les re-renders
+  // si l'état est déjà identique, donc pas besoin de détecter un changement ici.
+  if (!userId) {
+    setActiveSchedule(null)
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!userId) return
+    // loadSchedule() commence par un await avant tout setState : aucun re-render en
+    // cascade réel, mais l'analyse statique ne trace pas l'intérieur de l'appel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSchedule()
+  }, [userId])
 
   async function handleUploadTimetable(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -514,9 +523,9 @@ export default function PlanningPage() {
         data.message || 'Emploi du temps ajusté avec l’IA ! ✨',
         { duration: 5000, icon: '🪄' }
       )
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adjusting timetable with AI:', err)
-      toast.error(err?.message || 'Erreur lors de l’ajustement avec l’IA.')
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l’ajustement avec l’IA.')
     } finally {
       setGenerating(false)
     }

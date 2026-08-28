@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { notifyFriendRequest } from '@/lib/email/notifications'
+import type { Profile } from '@/types/database'
 
 // Données spécifiques à l'utilisateur connecté (amis, demandes en attente) :
 // ne doit jamais être mise en cache, sous peine d'afficher une liste périmée.
@@ -45,7 +46,7 @@ export async function GET() {
       (f) => f.user_id === user.id && f.status === 'pending'
     )
 
-    let friendsProfiles: any[] = []
+    let friendsProfiles: Partial<Profile>[] = []
     if (acceptedFriendIds.length > 0) {
       const { data: profiles, error: profilesErr } = await supabase
         .from('profiles')
@@ -90,7 +91,7 @@ export async function GET() {
         ...pendingSent.map((f) => f.friend_id),
       ])
     )
-    let otherPartyProfiles: Record<string, any> = {}
+    let otherPartyProfiles: Record<string, Partial<Profile>> = {}
     if (otherPartyIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
@@ -246,8 +247,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: 'Action invalide' }, { status: 400 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error managing friendship:', error)
-    return NextResponse.json({ error: error?.message || 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur serveur' }, { status: 500 })
   }
 }

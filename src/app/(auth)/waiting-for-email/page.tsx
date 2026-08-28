@@ -93,7 +93,7 @@ function WaitingForEmailContent() {
       </h1>
 
       <p className="mt-1 text-[11px] sm:text-sm text-text-secondary leading-relaxed max-w-xs sm:max-w-sm mx-auto">
-        Un e-mail de confirmation vous a été envoyé. Veuillez cliquer sur le lien pour activer votre compte.
+        Un e-mail de confirmation t&apos;a été envoyé. Clique sur le lien pour activer ton compte.
       </p>
 
       {/* Targeted Email Pill */}
@@ -149,7 +149,7 @@ function WaitingForEmailContent() {
           href="/register"
           className="text-text-secondary hover:text-text-primary transition-colors hover:underline"
         >
-          ← Changer d'e-mail
+          ← Changer d&apos;e-mail
         </Link>
         <Link
           href="/login"

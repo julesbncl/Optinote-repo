@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { applyRememberMePreference } from '@/lib/supabase/rememberMe'
 import { loginSchema, type LoginInput } from '@/lib/validators/auth'
 import { LogoIcon } from '@/components/ui/Logo'
 import {
@@ -26,17 +27,26 @@ function LoginForm() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [errors, setErrors] = useState<Partial<Record<keyof LoginInput, string>>>({})
-
-  useEffect(() => {
+  // Message initial dérivé une seule fois du paramètre d'URL ?error= (plutôt que
+  // dans un effect) ; errorMessage reste ensuite librement modifiable par handleSubmit.
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
     const errorParam = searchParams.get('error')
     if (errorParam === 'confirmation') {
-      setErrorMessage('Le lien de confirmation est invalide ou a expiré. Connecte-toi ou demande un nouveau lien.')
-    } else if (errorParam === 'auth') {
-      setErrorMessage('Erreur d’authentification. Veuillez réessayer.')
-    } else if (errorParam === 'rate_limit') {
-      setErrorMessage('Trop de tentatives de connexion consécutives. Par mesure de sécurité, veuillez patienter une minute avant de réessayer.')
+      return 'Le lien de confirmation est invalide ou a expiré. Connecte-toi ou demande un nouveau lien.'
+    }
+    if (errorParam === 'auth') {
+      return 'Erreur d’authentification. Veuillez réessayer.'
+    }
+    if (errorParam === 'rate_limit') {
+      return 'Trop de tentatives de connexion consécutives. Par mesure de sécurité, veuillez patienter une minute avant de réessayer.'
+    }
+    return null
+  })
+  const [errors, setErrors] = useState<Partial<Record<keyof LoginInput, string>>>({})
+
+  // Le toast est un vrai effet de bord (notification externe), donc reste dans un effect.
+  useEffect(() => {
+    if (searchParams.get('error') === 'rate_limit') {
       toast.error('Trop de tentatives. Veuillez patienter.')
     }
   }, [searchParams])
@@ -86,6 +96,8 @@ function LoginForm() {
         }
         return
       }
+
+      applyRememberMePreference(rememberMe)
 
       toast.success('Connexion réussie ! Heureux de te revoir 🚀')
       router.push(redirectTo)

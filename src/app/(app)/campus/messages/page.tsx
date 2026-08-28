@@ -128,7 +128,7 @@ function PrivateMessagesContent() {
           const data = await dataRes.json()
           setFriends(data.friends || [])
           setPendingReceived(data.pendingReceived || [])
-          const acceptedFriend = (data.friends || []).find((f: any) => f.id === friendId)
+          const acceptedFriend = (data.friends || []).find((f: Partial<Profile>) => f.id === friendId)
           if (acceptedFriend) setSelectedFriend(acceptedFriend)
         }
       }

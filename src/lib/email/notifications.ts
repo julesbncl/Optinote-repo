@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendNotificationEmail } from './index'
 
 // Envoi des notifications e-mail transactionnelles (message privé, demande d'ami,
@@ -15,7 +16,7 @@ interface RecipientPrefs {
   email_notif_revisions: boolean | null
 }
 
-async function getRecipientPrefs(supabase: any, userId: string): Promise<RecipientPrefs | null> {
+async function getRecipientPrefs(supabase: SupabaseClient, userId: string): Promise<RecipientPrefs | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('email, full_name, email_notif_messages, email_notif_friends, email_notif_revisions')
@@ -38,7 +39,7 @@ function fireAndForget(promise: Promise<unknown>, context: string) {
  * reste non lue par le destinataire.
  */
 export function notifyNewMessage(
-  supabase: any,
+  supabase: SupabaseClient,
   params: { senderId: string; senderName: string; receiverId: string; content: string }
 ) {
   fireAndForget(
@@ -64,7 +65,7 @@ export function notifyNewMessage(
 
 /** Notifie un utilisateur qu'il a reçu une nouvelle demande d'ami. */
 export function notifyFriendRequest(
-  supabase: any,
+  supabase: SupabaseClient,
   params: { senderId: string; senderName: string; receiverId: string }
 ) {
   fireAndForget(
@@ -90,7 +91,7 @@ export function notifyFriendRequest(
  * session de révision, pour qu'ils puissent la rejoindre.
  */
 export function notifyNewRevisionSession(
-  supabase: any,
+  supabase: SupabaseClient,
   params: { hostId: string; hostName: string; title: string; subject: string }
 ) {
   fireAndForget(

@@ -29,6 +29,7 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
 
 
@@ -36,6 +37,11 @@ function RegisterForm() {
     e.preventDefault()
     setErrors({})
     setErrorMessage(null)
+
+    if (!acceptedTerms) {
+      setErrorMessage('Merci d’accepter les CGU et la Politique de Confidentialité pour continuer.')
+      return
+    }
 
     const formData = new FormData(e.currentTarget)
     const data = {
@@ -167,6 +173,14 @@ function RegisterForm() {
             <strong>Essai gratuit Découverte :</strong> 1 fiche offerte + simulateur gratuit.
           </span>
         </div>
+
+        {/* Beta Mention Ultra-Compact */}
+        <p className="mt-1 text-[7px] sm:text-[10px] text-text-tertiary">
+          🚀 OptiNote est en beta jusqu&apos;au 1er septembre —{' '}
+          <Link href="/beta" className="font-bold text-primary-600 hover:underline">
+            profite d&apos;un accès Pro gratuit via la liste d&apos;attente
+          </Link>
+        </p>
       </div>
 
       {/* Error Alert Banner */}
@@ -248,7 +262,7 @@ function RegisterForm() {
               <input
                 name="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="6 car. min"
+                placeholder="8 car. min, Maj+min+chiffre"
                 autoComplete="new-password"
                 required
                 disabled={isLoading}
@@ -299,6 +313,29 @@ function RegisterForm() {
               <p className="mt-0.5 text-[8px] font-medium text-danger-600">{errors.confirmPassword}</p>
             )}
           </div>
+        </div>
+
+        {/* CGU / Privacy Consent */}
+        <div className="flex items-start gap-1.5 pt-0.5">
+          <input
+            id="accept-terms"
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            disabled={isLoading}
+            className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-border text-primary-600 focus:ring-primary-500/20 focus:ring-2 accent-primary-600 cursor-pointer"
+          />
+          <label htmlFor="accept-terms" className="text-[8.5px] sm:text-xs text-text-secondary select-none cursor-pointer leading-snug">
+            J&apos;accepte les{' '}
+            <Link href="/legal/terms" target="_blank" className="font-bold text-primary-600 hover:underline">
+              CGU
+            </Link>{' '}
+            et la{' '}
+            <Link href="/legal/privacy" target="_blank" className="font-bold text-primary-600 hover:underline">
+              Politique de Confidentialité
+            </Link>{' '}
+            d&apos;OptiNote
+          </label>
         </div>
 
         {/* Submit Button */}

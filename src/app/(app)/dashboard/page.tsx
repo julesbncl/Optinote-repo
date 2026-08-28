@@ -22,7 +22,6 @@ import {
   ArrowRight,
   Zap,
   Target,
-  Camera,
   FolderOpen,
   Library,
   Eye,
@@ -184,7 +183,7 @@ export default function DashboardPage() {
         }
       }, 350)
     },
-    []
+    [setSchools]
   )
 
   // Action : Rejoindre un lycée depuis un marqueur
@@ -555,13 +554,13 @@ export default function DashboardPage() {
             <Link
               href="/revision/new"
               className="p-1.5 rounded-lg bg-gradient-to-br from-purple-50 via-purple-50/70 to-fuchsia-50/50 hover:from-purple-100/90 hover:to-fuchsia-100/80 border border-purple-200/90 hover:border-purple-300 transition-all duration-200 flex flex-col items-center justify-center text-center shadow-2xs group/btn active:scale-[0.98] cursor-pointer"
-              title="Scanner un cours pour créer une fiche IA"
+              title="Créer une fiche de révision IA à partir de ton cours"
             >
               <div className="h-5.5 w-5.5 sm:h-6 sm:w-6 rounded-md bg-white shadow-xs border border-purple-100 flex items-center justify-center text-purple-600 mb-0.5 group-hover/btn:scale-110 transition-all">
-                <Camera className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <BookOpen className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </div>
               <span className="text-[9px] sm:text-[10.5px] font-black text-purple-950 group-hover/btn:text-purple-700 transition-colors leading-tight">
-                Scanner
+                Nouvelle fiche
               </span>
               <span className="text-[7px] sm:text-[8px] font-bold text-purple-700/90 mt-0.2 flex items-center gap-0.5">
                 <Sparkles className="h-1.5 w-1.5 sm:h-2 sm:w-2 text-purple-500" />

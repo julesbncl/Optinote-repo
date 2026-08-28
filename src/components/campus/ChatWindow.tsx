@@ -45,10 +45,14 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack, isFrien
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Resynchronise le statut d'ami affiché quand on change de conversation
-  useEffect(() => {
+  // Resynchronise le statut d'ami affiché quand on change de conversation, pendant
+  // le rendu plutôt que dans un effect (évite un re-render en cascade).
+  const [prevSyncKey, setPrevSyncKey] = useState(`${directUser?.id}:${isFriend}`)
+  const syncKey = `${directUser?.id}:${isFriend}`
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey)
     setFriendStatus(isFriend ? 'accepted' : 'none')
-  }, [directUser?.id, isFriend])
+  }
 
   // Load existing messages & Realtime WebSockets
   useEffect(() => {
@@ -92,7 +96,7 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack, isFrien
           table: 'messages',
         },
         async (payload) => {
-          const newMsg = payload.new as any
+          const newMsg = payload.new as unknown as Message
 
           // Vérifier si le message correspond à cette conversation
           const isRelevant = isDirect
@@ -203,8 +207,8 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack, isFrien
           duration: 4000,
         })
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de l’envoi')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l’envoi')
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
     } finally {
       setSending(false)
@@ -232,7 +236,7 @@ export function ChatWindow({ channel, directUser, currentUserId, onBack, isFrien
   }
 
   return (
-    <div className="flex flex-col h-[520px] bg-surface rounded-2xl border border-border shadow-md overflow-hidden relative">
+    <div className="flex flex-col h-[75dvh] min-h-[380px] max-h-[520px] bg-surface rounded-2xl border border-border shadow-md overflow-hidden relative">
       {/* Header bar */}
       <div className="px-3.5 py-3 border-b border-border bg-surface flex items-center justify-between gap-2 z-10 shadow-2xs">
         <div className="flex items-center gap-2.5 min-w-0">

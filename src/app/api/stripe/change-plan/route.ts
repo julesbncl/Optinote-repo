@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
 import { PRICING_PLANS } from '@/lib/constants'
+import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -89,9 +90,7 @@ export async function POST(request: Request) {
     // cas on ne doit ni afficher un faux succès, ni activer la formule en
     // base : on renvoie le lien de paiement Stripe pour que l'utilisateur
     // confirme lui-même, le webhook confirmera l'activation une fois payée.
-    const latestInvoice = (updated as any).latest_invoice as
-      | { status: string; hosted_invoice_url: string | null }
-      | null
+    const latestInvoice = updated.latest_invoice as Stripe.Invoice | null
 
     if (latestInvoice && latestInvoice.status !== 'paid') {
       return NextResponse.json({
@@ -102,12 +101,15 @@ export async function POST(request: Request) {
       })
     }
 
+    // Le SDK Stripe installé ne déclare plus current_period_end au niveau racine
+    // de l'abonnement (même workaround que le webhook et /api/stripe/sync), mais
+    // l'API le renvoie toujours ainsi pour la version configurée sur ce compte.
     await supabase
       .from('profiles')
       .update({
         subscription_tier: targetPlanId,
         subscription_current_period_end: new Date(
-          (updated as any).current_period_end * 1000
+          (updated as unknown as { current_period_end: number }).current_period_end * 1000
         ).toISOString(),
       })
       .eq('id', user.id)
@@ -119,10 +121,10 @@ export async function POST(request: Request) {
           ? 'Tu es passé à l’abonnement Annuel ! 🎉'
           : 'Tu es passé à l’abonnement Mensuel.',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error changing subscription plan:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors du changement de formule' },
+      { error: error instanceof Error ? error.message : 'Erreur lors du changement de formule' },
       { status: 500 }
     )
   }

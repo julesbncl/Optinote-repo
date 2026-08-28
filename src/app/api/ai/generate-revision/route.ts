@@ -117,8 +117,8 @@ export async function POST(request: Request) {
             })
           }
         }
-      } catch (aiErr: any) {
-        console.error('OpenAI generate revision failed, using structured fallback:', aiErr?.message)
+      } catch (aiErr: unknown) {
+        console.error('OpenAI generate revision failed, using structured fallback:', aiErr instanceof Error ? aiErr.message : String(aiErr))
       }
     }
 
@@ -155,10 +155,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(fallbackSheet)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generate revision error:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur lors de la génération de la fiche.' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de la génération de la fiche.' },
       { status: 500 }
     )
   }

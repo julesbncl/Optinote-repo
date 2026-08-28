@@ -263,7 +263,7 @@ export default function NewRevisionPage() {
       toast.loading('Génération & synthèse du cours...', { id: 'gen-toast' })
 
       // 3. Appel de l'IA de révision (OpenAI) avec fallback local
-      let resultData: any = null
+      let resultData: ReturnType<typeof generateLocalRevisionSheet> | null = null
       try {
         const aiRes = await fetch('/api/ai/generate-revision', {
           method: 'POST',
@@ -343,7 +343,7 @@ export default function NewRevisionPage() {
           // Also sync to local storage cache
           const existing = localStorage.getItem('optinote_sheets')
           const sheetsList = existing ? JSON.parse(existing) : []
-          localStorage.setItem('optinote_sheets', JSON.stringify([sheet, ...sheetsList.filter((s: any) => s.id !== sheet.id)]))
+          localStorage.setItem('optinote_sheets', JSON.stringify([sheet, ...sheetsList.filter((s: { id: string }) => s.id !== sheet.id)]))
 
           toast.dismiss('gen-toast')
           toast.success('Fiche de révision créée avec succès ! 🎉')
@@ -381,9 +381,9 @@ export default function NewRevisionPage() {
       toast.dismiss('gen-toast')
       toast.success('Fiche de révision créée avec succès ! 🎉')
       router.push('/revision')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Generation error:', err)
-      const errorMsg = err?.message || 'Une erreur est survenue lors de la création.'
+      const errorMsg = err instanceof Error ? err.message : 'Une erreur est survenue lors de la création.'
       setErrorMessage(errorMsg)
       toast.error(errorMsg)
     } finally {

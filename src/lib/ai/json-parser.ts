@@ -4,7 +4,7 @@
  * mathematical formulas with unescaped backslashes (e.g. \frac, \sqrt, \pm, \Delta),
  * markdown code blocks, or trailing garbage.
  */
-export function safeParseAIJson<T = any>(raw: string | null | undefined): T | null {
+export function safeParseAIJson<T = Record<string, unknown>>(raw: string | null | undefined): T | null {
   if (!raw || typeof raw !== 'string') return null
 
   let cleaned = raw.trim()

@@ -6,6 +6,7 @@ import { RATE_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
 import { sendMessageSchema } from '@/lib/validators/campus'
 import { notifyNewMessage } from '@/lib/email/notifications'
+import type { Message } from '@/types/campus'
 
 import { z } from 'zod'
 
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
     const moderation = moderateMessage(content)
 
     // Insertion du message
-    const insertPayload: any = {
+    const insertPayload: Partial<Message> = {
       user_id: user.id,
       sender_id: user.id,
       content: moderation.cleanedContent,

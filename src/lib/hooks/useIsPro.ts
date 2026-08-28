@@ -16,7 +16,7 @@ import type { Profile } from '@/types/database'
  */
 export function checkIsPro(profile: Partial<Profile> | null | undefined): boolean {
   if (!profile) return false
-  if (profile.is_pro === true || (profile as any).is_pro === 'true') return true
+  if (profile.is_pro === true || (profile.is_pro as unknown) === 'true') return true
   if (hasBetaAccess(profile)) return true
   if (['active', 'trialing'].includes(profile.subscription_status || '')) return true
   if (

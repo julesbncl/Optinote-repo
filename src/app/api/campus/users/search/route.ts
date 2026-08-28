@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { Profile } from '@/types/database'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,13 +31,13 @@ export async function GET(request: NextRequest) {
     }
 
     const mappedUsers = (profiles || [])
-      .filter((p: any) => {
+      .filter((p: Partial<Profile>) => {
         if (p.is_visible_on_school === false) return false
         if (p.email && (p.email.includes('mock') || p.email.includes('test.com') || p.email === 'thomas.dubois@lycee.fr')) return false
         return true
       })
-      .map((p: any) => {
-        const prefs = (typeof p.preferences === 'object' && p.preferences !== null) ? p.preferences : {}
+      .map((p: Partial<Profile>) => {
+        const prefs: Record<string, unknown> = (typeof p.preferences === 'object' && p.preferences !== null) ? p.preferences : {}
         const safeAvatarUrl =
           typeof p.avatar_url === 'string' && p.avatar_url.length <= 4000 ? p.avatar_url : null
         return {
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
       })
 
     return NextResponse.json({ users: mappedUsers })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('User search error:', err)
     return NextResponse.json({ users: [] })
   }

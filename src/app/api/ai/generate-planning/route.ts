@@ -111,8 +111,8 @@ export async function POST(request: Request) {
             }
           }
         }
-      } catch (aiErr: any) {
-        console.error('OpenAI generate planning failed, using smart realistic fallback:', aiErr?.message)
+      } catch (aiErr: unknown) {
+        console.error('OpenAI generate planning failed, using smart realistic fallback:', aiErr instanceof Error ? aiErr.message : String(aiErr))
       }
     }
 
@@ -172,10 +172,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ plan: generatedPlan })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generate planning error:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur lors de la génération du planning.' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de la génération du planning.' },
       { status: 500 }
     )
   }

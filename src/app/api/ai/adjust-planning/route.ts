@@ -116,8 +116,8 @@ Génère les créneaux correspondant exactement à sa demande.`
             newSlots = parsed.slots
           }
         }
-      } catch (err: any) {
-        console.error('OpenAI adjust planning error, fallback to parser:', err?.message)
+      } catch (err: unknown) {
+        console.error('OpenAI adjust planning error, fallback to parser:', err instanceof Error ? err.message : String(err))
       }
     }
 
@@ -242,10 +242,10 @@ Génère les créneaux correspondant exactement à sa demande.`
       newSlots,
       message: `${newSlots.length} créneau(x) ajouté(s) et synchronisé(s) à votre planning ! ✨`,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error adjusting planning with AI:', error)
     return NextResponse.json(
-      { error: error?.message || 'Erreur lors de l’ajustement de l’emploi du temps.' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de l’ajustement de l’emploi du temps.' },
       { status: 500 }
     )
   }

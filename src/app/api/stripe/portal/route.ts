@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ url: session.url })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Customer Portal Error:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de l’accès au portail de facturation' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de l’accès au portail de facturation' },
       { status: 500 }
     )
   }

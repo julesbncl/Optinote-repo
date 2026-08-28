@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
           name="password"
           type="password"
           label="Nouveau mot de passe"
-          placeholder="6 caractères minimum"
+          placeholder="8 car. min, Maj+min+chiffre"
           leftIcon={<Lock className="h-4 w-4" />}
           error={errors.password}
           autoComplete="new-password"

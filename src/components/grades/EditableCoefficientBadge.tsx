@@ -24,10 +24,13 @@ export function EditableCoefficientBadge({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Synchroniser la valeur avec les props
-  useEffect(() => {
+  // Synchroniser la valeur avec les props, pendant le rendu plutôt que dans un effect
+  // (pattern recommandé par React pour "adjuster un state quand une prop change").
+  const [prevCoefficient, setPrevCoefficient] = useState(currentCoefficient)
+  if (currentCoefficient !== prevCoefficient) {
+    setPrevCoefficient(currentCoefficient)
     setCoefValue(String(currentCoefficient))
-  }, [currentCoefficient])
+  }
 
   // Focus automatique de l'input à l'ouverture
   useEffect(() => {

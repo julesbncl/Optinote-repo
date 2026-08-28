@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { formatPrice } from '@/lib/constants'
 import toast from 'react-hot-toast'
 import {
   ShieldAlert,
@@ -18,6 +20,8 @@ import {
   Bug,
   Lightbulb,
   Rocket,
+  Sparkles,
+  Wallet,
 } from 'lucide-react'
 
 interface PendingVerification {
@@ -64,6 +68,24 @@ interface WaitlistEntry {
   created_at: string
 }
 
+interface CreatorCodeStats {
+  id: string
+  code: string
+  creator_name: string
+  creator_email: string | null
+  discount_percent: number
+  commission_percent: number
+  is_active: boolean
+  redemptions_count: number
+  total_revenue_cents: number
+  total_commission_cents: number
+  commission_due_cents: number
+}
+
+function eur(cents: number): string {
+  return formatPrice(cents / 100)
+}
+
 const FEEDBACK_TYPE_LABELS: Record<string, { label: string; icon: typeof Bug }> = {
   bug: { label: 'Bug', icon: Bug },
   idea: { label: 'Idée', icon: Lightbulb },
@@ -90,6 +112,11 @@ export default function AdminPage() {
   const [waitlistCount, setWaitlistCount] = useState(0)
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [creators, setCreators] = useState<CreatorCodeStats[]>([])
+  const [creatingCreator, setCreatingCreator] = useState(false)
+  const [newCode, setNewCode] = useState('')
+  const [newCreatorName, setNewCreatorName] = useState('')
+  const [newCreatorEmail, setNewCreatorEmail] = useState('')
 
   useEffect(() => {
     async function checkAccess() {
@@ -125,11 +152,12 @@ export default function AdminPage() {
 
     async function loadData() {
       try {
-        const [verifRes, reportsRes, feedbackRes, waitlistRes] = await Promise.all([
+        const [verifRes, reportsRes, feedbackRes, waitlistRes, creatorsRes] = await Promise.all([
           fetch('/api/admin/verifications'),
           fetch('/api/admin/reports'),
           fetch('/api/admin/feedback'),
           fetch('/api/admin/waitlist'),
+          fetch('/api/admin/creators'),
         ])
         if (verifRes.ok) {
           const data = await verifRes.json()
@@ -147,6 +175,10 @@ export default function AdminPage() {
           const data = await waitlistRes.json()
           setWaitlistCount(data.count || 0)
           setWaitlistEntries(data.entries || [])
+        }
+        if (creatorsRes.ok) {
+          const data = await creatorsRes.json()
+          setCreators(data.creators || [])
         }
       } catch (err) {
         console.error(err)
@@ -222,6 +254,85 @@ export default function AdminPage() {
     } catch (err) {
       console.error(err)
       toast.error('Erreur lors de la mise à jour')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  async function handleCreateCreator(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newCode.trim() || !newCreatorName.trim()) return
+
+    setCreatingCreator(true)
+    try {
+      const res = await fetch('/api/admin/creators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newCode.trim(),
+          creatorName: newCreatorName.trim(),
+          creatorEmail: newCreatorEmail.trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error || 'Erreur lors de la création du code')
+        return
+      }
+      setCreators((prev) => [{ ...data.creator, redemptions_count: 0, total_revenue_cents: 0, total_commission_cents: 0, commission_due_cents: 0 }, ...prev])
+      setNewCode('')
+      setNewCreatorName('')
+      setNewCreatorEmail('')
+      toast.success(`Code ${data.creator.code} créé ! 🎉`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de la création du code')
+    } finally {
+      setCreatingCreator(false)
+    }
+  }
+
+  async function handleToggleCreatorActive(creatorCodeId: string, isActive: boolean) {
+    setProcessingId(creatorCodeId)
+    try {
+      const res = await fetch('/api/admin/creators', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorCodeId, isActive }),
+      })
+      if (!res.ok) {
+        toast.error('Erreur lors de la mise à jour')
+        return
+      }
+      setCreators((prev) => prev.map((c) => (c.id === creatorCodeId ? { ...c, is_active: isActive } : c)))
+      toast.success(isActive ? 'Code réactivé' : 'Code désactivé')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors de la mise à jour')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  async function handleMarkCreatorPaidOut(creatorCodeId: string) {
+    setProcessingId(creatorCodeId)
+    try {
+      const res = await fetch('/api/admin/creators', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorCodeId, markPaidOut: true }),
+      })
+      if (!res.ok) {
+        toast.error('Erreur lors du marquage comme payé')
+        return
+      }
+      setCreators((prev) =>
+        prev.map((c) => (c.id === creatorCodeId ? { ...c, commission_due_cents: 0 } : c))
+      )
+      toast.success('Commission marquée comme versée')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur lors du marquage comme payé')
     } finally {
       setProcessingId(null)
     }
@@ -476,6 +587,104 @@ export default function AdminPage() {
                         </span>
                       )}
                       <span>{new Date(w.created_at).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Programme partenaire créateurs */}
+          <Card className="p-3.5 space-y-3">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <Sparkles className="h-4 w-4 text-primary-600" />
+              <h2 className="text-sm font-bold text-text-primary">
+                Créateurs partenaires ({creators.length})
+              </h2>
+            </div>
+
+            <form onSubmit={handleCreateCreator} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+              <Input
+                label="Code (ex: PSEUDO15)"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                placeholder="PSEUDO15"
+                required
+              />
+              <Input
+                label="Nom du créateur"
+                value={newCreatorName}
+                onChange={(e) => setNewCreatorName(e.target.value)}
+                placeholder="Pseudo TikTok"
+                required
+              />
+              <Input
+                label="Email (optionnel)"
+                type="email"
+                value={newCreatorEmail}
+                onChange={(e) => setNewCreatorEmail(e.target.value)}
+                placeholder="Relie son compte OptiNote"
+              />
+              <Button type="submit" isLoading={creatingCreator} className="w-full">
+                Créer le code
+              </Button>
+            </form>
+            <p className="text-[10px] text-text-tertiary -mt-1">
+              -15% pour sa communauté et 15% de commission par défaut, y compris sur les renouvellements. Si l&apos;email correspond à un compte OptiNote existant, le créateur peut se connecter et voir ses stats sur <code className="text-[9.5px]">/creator</code>.
+            </p>
+
+            {creators.length === 0 ? (
+              <p className="text-xs text-text-tertiary py-3 text-center">
+                Aucun code créateur pour le moment.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {creators.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-2.5 ${
+                      c.is_active ? 'border-border bg-surface-secondary/40' : 'border-border/60 bg-surface-secondary/20 opacity-70'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-text-primary truncate">
+                        {c.code} <span className="text-text-tertiary font-normal">— {c.creator_name}</span>
+                        {!c.is_active && (
+                          <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-danger-50 text-danger-700 border border-danger-200">
+                            Inactif
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[10.5px] text-text-secondary">
+                        {c.redemptions_count} abonné{c.redemptions_count > 1 ? 's' : ''} • {eur(c.total_revenue_cents)} générés • {eur(c.total_commission_cents)} de commission totale
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {c.commission_due_cents > 0 && (
+                        <span className="text-[10.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg flex items-center gap-1">
+                          <Wallet className="h-3 w-3" />
+                          {eur(c.commission_due_cents)} dû
+                        </span>
+                      )}
+                      {c.commission_due_cents > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={processingId === c.id}
+                          onClick={() => handleMarkCreatorPaidOut(c.id)}
+                        >
+                          Marquer versé
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={c.is_active ? 'danger' : 'secondary'}
+                        disabled={processingId === c.id}
+                        onClick={() => handleToggleCreatorActive(c.id, !c.is_active)}
+                      >
+                        {c.is_active ? 'Désactiver' : 'Réactiver'}
+                      </Button>
                     </div>
                   </div>
                 ))}

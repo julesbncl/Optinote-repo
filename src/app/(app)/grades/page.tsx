@@ -52,10 +52,6 @@ export default function GradesPage() {
 
   const isSubscribed = checkIsPro(profile)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   async function loadData() {
     try {
       const {
@@ -84,6 +80,13 @@ export default function GradesPage() {
     }
   }
 
+  useEffect(() => {
+    // loadData() commence par un await avant tout setState : aucun re-render en
+    // cascade réel, mais l'analyse statique ne trace pas l'intérieur de l'appel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, [])
+
   // Open add grade modal for a specific subject
   function openAddGradeForSubject(subjectId: string) {
     // Si l'utilisateur est Pro, les limites sont 100% levées (notes illimitées)
@@ -91,8 +94,8 @@ export default function GradesPage() {
       const existingGrades = grades.filter(
         (g) => g.subject_id === subjectId && g.trimester === selectedTrimester && !g.is_simulated
       )
-      if (existingGrades.length >= 2) {
-        toast.error('Limite de la version gratuite atteinte : 2 notes max par matière. Débloque le mode Pro pour des notes illimitées !')
+      if (existingGrades.length >= 1) {
+        toast.error('Limite de la version gratuite atteinte : 1 note max par matière. Débloque le mode Pro pour des notes illimitées !')
         setShowPaywallModal(true)
         return
       }
@@ -210,16 +213,16 @@ export default function GradesPage() {
     const label = (formData.get('label') as string) || null
     const date = (formData.get('date') as string) || new Date().toISOString()
 
-    // Quota check: seuls les comptes gratuits sans abonnement Pro sont limités à 2 notes par matière
+    // Quota check: seuls les comptes gratuits sans abonnement Pro sont limités à 1 note par matière
     if (!isSubscribed && !isSimulated) {
       const existingGrades = grades.filter(
         (g) => g.subject_id === subjectId && g.trimester === selectedTrimester && !g.is_simulated
       )
-      if (existingGrades.length >= 2) {
+      if (existingGrades.length >= 1) {
         setIsSubmitting(false)
         setShowAddGrade(false)
         setShowPaywallModal(true)
-        toast.error('Limite de la version gratuite atteinte : 2 notes max par matière. Débloque le mode Pro pour des notes illimitées !')
+        toast.error('Limite de la version gratuite atteinte : 1 note max par matière. Débloque le mode Pro pour des notes illimitées !')
         return
       }
     }
@@ -695,7 +698,7 @@ export default function GradesPage() {
                             onClick={() =>
                               setDeleteTarget({ type: 'grade', id: grade.id })
                             }
-                            className="text-text-tertiary hover:text-error-600 ml-0.5 text-[10px] sm:text-xs font-bold leading-none cursor-pointer"
+                            className="text-text-tertiary hover:text-error-600 ml-1 p-1 -m-px text-[10px] sm:text-xs font-bold leading-none cursor-pointer"
                             title="Supprimer cette note"
                           >
                             ×

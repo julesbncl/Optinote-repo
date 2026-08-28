@@ -48,6 +48,20 @@ export function SchoolSearchAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Réinitialise suggestions/chargement pendant le rendu à chaque changement de
+  // valeur (plutôt qu'un setState synchrone dans l'effect ci-dessous), qui ne
+  // garde alors que le fetch débouncé asynchrone lui-même.
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (!value || value.trim().length < 2) {
+      setSuggestions([])
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+  }
+
   // Recherche debouncée vers data.education.gouv.fr API
   useEffect(() => {
     if (debounceTimerRef.current) {
@@ -55,12 +69,9 @@ export function SchoolSearchAutocomplete({
     }
 
     if (!value || value.trim().length < 2) {
-      setSuggestions([])
-      setLoading(false)
       return
     }
 
-    setLoading(true)
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/campus/schools/search?q=${encodeURIComponent(value.trim())}`)

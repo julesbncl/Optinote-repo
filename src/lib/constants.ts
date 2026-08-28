@@ -109,16 +109,6 @@ export const TRIMESTERS = [
   { value: 3, label: 'Trimestre 3' },
 ] as const
 
-// Message types
-export const MESSAGE_TYPES = [
-  { value: 'absence', label: "Demande d'absence", emoji: '📝' },
-  { value: 'retard', label: 'Justification de retard', emoji: '⏰' },
-  { value: 'question', label: 'Question sur un cours', emoji: '❓' },
-  { value: 'rdv', label: 'Demande de rendez-vous', emoji: '📅' },
-  { value: 'rattrapage', label: 'Rattrapage de note', emoji: '📊' },
-  { value: 'autre', label: 'Autre demande', emoji: '✉️' },
-] as const
-
 // Message report reasons (anti-harassment)
 export const REPORT_REASONS = [
   { id: 'harcelement', label: 'Harcèlement ou intimidation' },

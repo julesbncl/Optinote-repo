@@ -13,7 +13,7 @@ interface PaywallModalProps {
   onClose: () => void
   title?: string
   description?: string
-  featureLocked?: 'sheet_limit' | 'grade_limit' | 'planning' | 'messages' | 'campus' | 'general'
+  featureLocked?: 'sheet_limit' | 'grade_limit' | 'planning' | 'campus' | 'general'
 }
 
 export function PaywallModal({
@@ -32,7 +32,6 @@ export function PaywallModal({
     sheet_limit: 'Limite atteinte : 1 fiche d’essai gratuite',
     grade_limit: 'Limite atteinte : 1 note par matière',
     planning: 'Planning Intelligent IA réservé aux abonnés',
-    messages: 'Générateur de Messages Pro réservé aux abonnés',
     campus: 'Campus Social & Salons réservés aux abonnés',
     general: 'Débloque l’accès illimité à OptiNote',
   }
@@ -44,8 +43,6 @@ export function PaywallModal({
       'La version gratuite est limitée à 1 seule note par matière. Passe à l’illimité pour ajouter toutes tes notes et anticiper tes devoirs surveillés !',
     planning:
       'Génère ton emploi du temps de travail optimisé 7j/7 avec prise en compte de tes devoirs et de ta fatigue.',
-    messages:
-      'Rédige en quelques secondes des emails polis, impeccables et conformes aux codes de l’Éducation Nationale.',
     campus:
       'Rejoins les salons de discussion de tes spécialités, échange avec tes camarades de lycée et utilise la carte.',
     general:

@@ -31,6 +31,47 @@ export default function RevisionDetailPage({
   const [copied, setCopied] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+
+  // Safari iOS refuse souvent d'afficher/naviguer vers une URI "data:" volumineuse
+  // (iframe blanche ou onglet qui ne s'ouvre pas). On convertit une seule fois en
+  // Blob URL, fiable sur tous les navigateurs mobiles, sans changer le stockage
+  // (toujours en base64 côté DB).
+  //
+  // Le cas non-"data:" est réglé pendant le rendu (plutôt qu'un setState synchrone
+  // dans l'effect ci-dessous), qui ne garde alors que la conversion asynchrone.
+  const [prevImageUrl, setPrevImageUrl] = useState(sheet?.original_image_url)
+  if (sheet?.original_image_url !== prevImageUrl) {
+    setPrevImageUrl(sheet?.original_image_url)
+    if (!sheet?.original_image_url?.startsWith('data:')) {
+      setPdfPreviewUrl(sheet?.original_image_url || null)
+    }
+  }
+
+  useEffect(() => {
+    if (!sheet?.original_image_url?.startsWith('data:')) {
+      return
+    }
+
+    let objectUrl: string | null = null
+    let cancelled = false
+
+    fetch(sheet.original_image_url)
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setPdfPreviewUrl(objectUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setPdfPreviewUrl(sheet.original_image_url)
+      })
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [sheet?.original_image_url])
 
   useEffect(() => {
     async function load() {
@@ -323,10 +364,10 @@ export default function RevisionDetailPage({
               </div>
             </div>
 
-            {sheet.original_image_url && (
+            {pdfPreviewUrl && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 <a
-                  href={sheet.original_image_url}
+                  href={pdfPreviewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer"
@@ -335,7 +376,7 @@ export default function RevisionDetailPage({
                   <span>Ouvrir dans un onglet</span>
                 </a>
                 <a
-                  href={sheet.original_image_url}
+                  href={pdfPreviewUrl}
                   download={`${cleanPlainText(sheet.title)}.pdf`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-bold shadow-2xs transition-all cursor-pointer"
                 >
@@ -345,10 +386,10 @@ export default function RevisionDetailPage({
             )}
           </div>
 
-          {sheet.original_image_url ? (
+          {pdfPreviewUrl ? (
             <div className="rounded-xl overflow-hidden border border-border bg-white shadow-xs">
               <iframe
-                src={sheet.original_image_url}
+                src={pdfPreviewUrl}
                 title={sheet.title}
                 className="w-full h-[650px] sm:h-[750px] border-0"
               />

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { School } from '@/types/campus'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Chercher si le lycée existe déjà dans la base Supabase
     let schoolId: string | null = null
-    let dbSchool: any = null
+    let dbSchool: School | null = null
 
     try {
       const { data: existingSchools } = await supabase
@@ -35,14 +36,14 @@ export async function POST(request: NextRequest) {
 
       if (existingSchools && existingSchools.length > 0) {
         dbSchool = existingSchools[0]
-        schoolId = dbSchool.id
+        schoolId = dbSchool!.id
 
         await supabase
           .from('schools')
           .update({
-            students_count: (dbSchool.students_count || 0) + 1,
-            latitude: school.latitude || dbSchool.latitude,
-            longitude: school.longitude || dbSchool.longitude,
+            students_count: (dbSchool!.students_count || 0) + 1,
+            latitude: school.latitude || dbSchool!.latitude,
+            longitude: school.longitude || dbSchool!.longitude,
           })
           .eq('id', schoolId)
       } else {
@@ -173,10 +174,10 @@ export async function POST(request: NextRequest) {
       profile: updatedProfile,
       channelId,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error selecting school:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de la sélection du lycée' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de la sélection du lycée' },
       { status: 500 }
     )
   }

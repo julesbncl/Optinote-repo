@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { stripe } from '@/lib/stripe/server'
+import type Stripe from 'stripe'
 
 // Client Supabase Admin avec Service Role pour garantir les droits d'écriture
 const supabaseAdmin = createClient(
@@ -48,8 +49,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let activeSubscription: any = null
-    let customerList = customerId ? [customerId] : []
+    let activeSubscription: Stripe.Subscription | null | undefined = null
+    const customerList = customerId ? [customerId] : []
 
     // Si on a un customerId, vérifier toutes ses souscriptions
     if (customerId) {
@@ -94,8 +95,11 @@ export async function POST(request: NextRequest) {
         activeSubscription.metadata?.plan_tier ||
         (activeSubscription.items.data[0]?.plan?.interval === 'year' ? 'annual' : 'monthly')
 
+      // Le SDK Stripe installé ne déclare plus current_period_end au niveau racine
+      // de l'abonnement (même workaround que le webhook), mais l'API le renvoie
+      // toujours ainsi pour la version configurée sur ce compte.
       const currentPeriodEnd = new Date(
-        activeSubscription.current_period_end * 1000
+        (activeSubscription as unknown as { current_period_end: number }).current_period_end * 1000
       ).toISOString()
 
       const { data: updatedProfile, error: updateErr } = await supabaseAdmin
@@ -141,10 +145,10 @@ export async function POST(request: NextRequest) {
       is_pro: false,
       message: 'Aucun abonnement Stripe actif trouvé pour ce compte.',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur API sync Stripe:', error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de la synchronisation Stripe' },
+      { error: error instanceof Error ? error.message : 'Erreur lors de la synchronisation Stripe' },
       { status: 500 }
     )
   }

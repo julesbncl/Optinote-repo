@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
       messageId: result.messageId,
       latencyMs: result.latencyMs,
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[API Send Verification] Erreur:', err)
     return NextResponse.json(
-      { error: err.message || 'Erreur interne' },
+      { error: err instanceof Error ? err.message : 'Erreur interne' },
       { status: 500 }
     )
   }

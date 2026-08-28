@@ -39,13 +39,20 @@ export function FriendsList({
   onDeclineRequest,
 }: FriendsListProps) {
   const [search, setSearch] = useState('')
-  const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([])
+  const [globalSearchResults, setGlobalSearchResults] = useState<Partial<Profile>[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
+
+  // Réinitialise les résultats pendant le rendu quand la recherche est vidée
+  // (plutôt qu'un setState synchrone dans l'effect ci-dessous).
+  const [prevSearch, setPrevSearch] = useState(search)
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    if (!search.trim()) setGlobalSearchResults([])
+  }
 
   // Live search debounced
   useEffect(() => {
     if (!search.trim()) {
-      setGlobalSearchResults([])
       return
     }
 
@@ -69,7 +76,7 @@ export function FriendsList({
   const filteredFriends = friends.filter((f) =>
     (f.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
     (f.school_name || '').toLowerCase().includes(search.toLowerCase()) ||
-    ((f as any).email || '').toLowerCase().includes(search.toLowerCase())
+    ((f.email || '')).toLowerCase().includes(search.toLowerCase())
   )
 
   // Utilisateurs trouvés hors liste d'amis

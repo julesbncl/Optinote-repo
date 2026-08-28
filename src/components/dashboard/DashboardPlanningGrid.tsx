@@ -10,14 +10,14 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { formatToFrenchTimeDisplay } from '@/components/ui/TimePicker'
-import type { Schedule } from '@/types/database'
+import type { Schedule, PlanningSlot } from '@/types/database'
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const SHORT_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 // Plage horaire étendue de 5h00 du matin à 00h00 (Minuit)
 const PLANNING_HOURS = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0]
 
-const DEFAULT_PLAN_SLOTS = [
+const DEFAULT_PLAN_SLOTS: PlanningSlot[] = [
   // LUNDI
   { day: 0, startTime: '08:00', endTime: '10:00', subject: 'Mathématiques', task: 'Cours obligatoire', type: 'class' },
   { day: 0, startTime: '10:00', endTime: '12:00', subject: 'Physique-Chimie', task: 'TP laboratoire', type: 'class' },
@@ -58,7 +58,7 @@ const DEFAULT_PLAN_SLOTS = [
 interface DashboardPlanningGridProps {
   schedule: Schedule | null
   isLocked?: boolean
-  onSlotClick?: (slot: any, index: number) => void
+  onSlotClick?: (slot: PlanningSlot, index: number) => void
   onAddSlot?: (day: number, hour: number) => void
   title?: string
   subtitle?: string

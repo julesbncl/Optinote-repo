@@ -47,15 +47,16 @@ export async function checkRevisionSheetQuota(
 }
 
 /**
- * Checks if a user is allowed to add another grade for a specific subject.
- * Free accounts: max 1 grade per subject.
+ * Checks if a user is allowed to add another grade for a specific subject in a given trimester.
+ * Free accounts: max 1 real grade per subject per trimester.
  * Paid accounts (monthly/annual): unlimited.
  */
 export async function checkGradePerSubjectQuota(
   supabase: SupabaseClient,
   userId: string,
   subjectId: string,
-  profile: Profile | null
+  profile: Profile | null,
+  trimester: number
 ): Promise<QuotaCheckResult> {
   if (isUserSubscribed(profile)) {
     return { allowed: true, currentUsage: 0, maxAllowed: Infinity }
@@ -66,6 +67,7 @@ export async function checkGradePerSubjectQuota(
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('subject_id', subjectId)
+    .eq('trimester', trimester)
     .eq('is_simulated', false)
 
   if (error) {

@@ -36,6 +36,21 @@ import { useAppProfile } from '@/lib/contexts/AppProfileContext'
 import type { School } from '@/types/campus'
 import type { Profile } from '@/types/database'
 
+// Forme brute d'un résultat renvoyé par /api/campus/schools/search (dataset
+// data.education.gouv.fr ou fallback local) — distincte de `School` (id, uai,
+// students_count ne sont pas garantis) avant normalisation en objet `School`.
+interface SchoolSearchApiResult {
+  uai?: string
+  id?: string
+  name: string
+  city?: string
+  postal_code?: string
+  academy?: string | null
+  latitude?: number | string | null
+  longitude?: number | string | null
+  students_count?: number
+}
+
 export default function CampusMapPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -111,7 +126,7 @@ export default function CampusMapPage() {
             setSchools((prev) => {
               const map = new Map<string, School>()
               prev.forEach((s) => map.set(s.id, s))
-              data.results.forEach((r: any) => {
+              data.results.forEach((r: SchoolSearchApiResult) => {
                 const sId = r.uai || r.id || `sch-${r.name.toLowerCase().replace(/\s+/g, '-')}`
                 const sObj: School = {
                   id: sId,
@@ -344,7 +359,7 @@ export default function CampusMapPage() {
   }
 
   // 2. Sélection d'un lycée depuis l'autocomplete de recherche (avec flyTo automatique)
-  const handleSelectOfficialSchool = async (schoolData: any) => {
+  const handleSelectOfficialSchool = async (schoolData: Partial<School>) => {
     try {
       const res = await fetch('/api/campus/schools/select', {
         method: 'POST',
@@ -653,7 +668,7 @@ export default function CampusMapPage() {
             <div className="bg-surface/90 backdrop-blur-md rounded-2xl border border-border p-4 text-left text-xs space-y-2.5 text-text-secondary font-medium">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                <span>Localisation interactive des lycées et camarades d'étude</span>
+                <span>Localisation interactive des lycées et camarades d&apos;étude</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
@@ -985,7 +1000,7 @@ export default function CampusMapPage() {
         <form onSubmit={handleSaveBio} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-text-primary mb-1.5">
-              Partage tes objectifs ou ton message d'entraide 💬
+              Partage tes objectifs ou ton message d&apos;entraide 💬
             </label>
             <Textarea
               placeholder="Ex: Objectif prépa MPSI / PASS, dispo pour réviser la spé Maths et la Physique !"

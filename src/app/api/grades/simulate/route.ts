@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { simulateAverageSchema } from '@/lib/validators/grades'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const ip = getClientIp(request as any)
+    const ip = getClientIp(request)
     const rateLimit = checkRateLimit(`sim:${user.id || ip}`, 30, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
             : null,
       },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Erreur API simulation moyennes:', err)
     return NextResponse.json(
       { error: 'Erreur interne lors de la simulation' },

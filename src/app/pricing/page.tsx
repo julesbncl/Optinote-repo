@@ -28,6 +28,13 @@ import {
 } from '@/lib/constants'
 import toast from 'react-hot-toast'
 
+function detectPromoFromUrl(searchParams: ReturnType<typeof useSearchParams>): string | null {
+  const codeParam = searchParams.get('promo') || searchParams.get('ref') || searchParams.get('code')
+  if (!codeParam) return null
+  const clean = codeParam.trim().toUpperCase()
+  return (VALID_PROMO_CODES as readonly string[]).includes(clean) ? clean : null
+}
+
 function PricingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -119,35 +126,49 @@ function PricingContent() {
     }
   }
 
-  // Gestion du code promo d'affiliation (-15%)
-  const [promoInput, setPromoInput] = useState('')
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
+  // Gestion du code promo d'affiliation (-15%), dérivée une seule fois de l'URL
+  // (?promo=, ?ref=, ?code=) à l'initialisation plutôt que dans un effect ; ensuite
+  // librement modifiable par handleApplyPromo.
+  const [promoInput, setPromoInput] = useState(() => detectPromoFromUrl(searchParams) || '')
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(() => detectPromoFromUrl(searchParams))
+  const [appliedDiscountPercent, setAppliedDiscountPercent] = useState(PROMO_DISCOUNT_PERCENT)
 
-  // Détection automatique du code promo via URL (?promo=, ?ref=, ?code=)
+  // Le toast est un vrai effet de bord (notification externe), donc reste dans un effect.
   useEffect(() => {
-    const codeParam = searchParams.get('promo') || searchParams.get('ref') || searchParams.get('code')
-    if (codeParam) {
-      const clean = codeParam.trim().toUpperCase()
-      if ((VALID_PROMO_CODES as readonly string[]).includes(clean)) {
-        setAppliedPromo(clean)
-        setPromoInput(clean)
-        toast.success(`Code promo ${clean} activé : -${PROMO_DISCOUNT_PERCENT}% sur ton abonnement ! 🎉`)
-      }
+    const detected = detectPromoFromUrl(searchParams)
+    if (detected) {
+      toast.success(`Code promo ${detected} activé : -${PROMO_DISCOUNT_PERCENT}% sur ton abonnement ! 🎉`)
     }
   }, [searchParams])
 
   const isPromoApplied = Boolean(appliedPromo)
+  const [checkingPromo, setCheckingPromo] = useState(false)
 
-  function handleApplyPromo(e: React.FormEvent) {
+  async function handleApplyPromo(e: React.FormEvent) {
     e.preventDefault()
     const cleanCode = promoInput.trim().toUpperCase()
     if (!cleanCode) return
 
-    if (VALID_PROMO_CODES.includes(cleanCode as any)) {
-      setAppliedPromo(cleanCode)
-      toast.success(`Code promo ${cleanCode} appliqué : -${PROMO_DISCOUNT_PERCENT}% sur tous les abonnements ! 🎉`)
-    } else {
-      toast.error('Code promo ou d’affiliation invalide.')
+    setCheckingPromo(true)
+    try {
+      const res = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode }),
+      })
+      const data = await res.json()
+
+      if (data.valid) {
+        setAppliedPromo(cleanCode)
+        setAppliedDiscountPercent(data.discountPercent || PROMO_DISCOUNT_PERCENT)
+        toast.success(`Code ${cleanCode} appliqué : -${data.discountPercent}% sur ton abonnement ! 🎉`)
+      } else {
+        toast.error(data.error || 'Code promo ou d’affiliation invalide.')
+      }
+    } catch {
+      toast.error('Erreur lors de la vérification du code.')
+    } finally {
+      setCheckingPromo(false)
     }
   }
 
@@ -202,9 +223,9 @@ function PricingContent() {
   const baseAnnualMonthlyPrice = 4.99
   const baseAnnualTotal = 59.88
 
-  const discountedMonthlyPrice = getDiscountedPrice(baseMonthlyPrice, PROMO_DISCOUNT_PERCENT)
-  const discountedAnnualMonthlyPrice = getDiscountedPrice(baseAnnualMonthlyPrice, PROMO_DISCOUNT_PERCENT)
-  const discountedAnnualTotal = getDiscountedPrice(baseAnnualTotal, PROMO_DISCOUNT_PERCENT)
+  const discountedMonthlyPrice = getDiscountedPrice(baseMonthlyPrice, appliedDiscountPercent)
+  const discountedAnnualMonthlyPrice = getDiscountedPrice(baseAnnualMonthlyPrice, appliedDiscountPercent)
+  const discountedAnnualTotal = getDiscountedPrice(baseAnnualTotal, appliedDiscountPercent)
 
   const currentMonthlyDisplay = isPromoApplied ? formatPrice(discountedMonthlyPrice) : '6,99 €'
   const currentAnnualDisplay = isPromoApplied ? formatPrice(discountedAnnualMonthlyPrice) : '4,99 €'
@@ -329,7 +350,7 @@ function PricingContent() {
                   <div className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
                     <Check className="h-3 w-3" />
                   </div>
-                  <span>Code <strong>{appliedPromo}</strong> appliqué (-15%)</span>
+                  <span>Code <strong>{appliedPromo}</strong> appliqué (-{appliedDiscountPercent}%)</span>
                 </div>
                 <button
                   type="button"
@@ -348,14 +369,16 @@ function PricingContent() {
                     value={promoInput}
                     onChange={(e) => setPromoInput(e.target.value)}
                     placeholder="Code promo ou influenceur (ex: BAC2026)"
-                    className="w-full pl-8 pr-2.5 py-1.5 text-[11px] sm:text-xs bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-primary-500 uppercase font-semibold"
+                    disabled={checkingPromo}
+                    className="w-full pl-8 pr-2.5 py-1.5 text-[11px] sm:text-xs bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-primary-500 uppercase font-semibold disabled:opacity-60"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
+                  disabled={checkingPromo}
+                  className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer flex-shrink-0 disabled:opacity-60"
                 >
-                  Appliquer
+                  {checkingPromo ? '...' : 'Appliquer'}
                 </button>
               </form>
             )}
@@ -482,7 +505,7 @@ function PricingContent() {
               <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
                 <span className="bg-gradient-to-r from-primary-600 to-accent-600 text-white text-[7.5px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-3 py-0.5 rounded-full shadow-xs whitespace-nowrap">
                   {isPromoApplied
-                    ? 'Code Promo -15% Appliqué 🔥'
+                    ? `Code Promo -${appliedDiscountPercent}% Appliqué 🔥`
                     : billingCycle === 'annual'
                     ? '2 mois offerts'
                     : 'Accès Total'}
@@ -516,7 +539,7 @@ function PricingContent() {
                   </div>
                   {billingCycle === 'annual' ? (
                     <p className="text-[7.5px] sm:text-xs text-emerald-600 font-bold mt-0.5">
-                      {currentAnnualTotalDisplay} / an {isPromoApplied ? '(-15% appliqué)' : '(économie ~29%)'}
+                      {currentAnnualTotalDisplay} / an {isPromoApplied ? `(-${appliedDiscountPercent}% appliqué)` : '(économie ~29%)'}
                     </p>
                   ) : (
                     <p className="text-[7.5px] sm:text-xs text-text-tertiary mt-0.5">

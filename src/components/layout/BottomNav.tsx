@@ -130,7 +130,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
                   }
                 }}
                 className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 py-0.5 px-0.5 relative',
+                  'flex-1 h-full flex flex-col items-center justify-center gap-0.5 py-0.5 px-0.5 relative',
                   'min-w-0 transition-all duration-200 cursor-pointer',
                   isActive
                     ? 'text-primary-600'
@@ -152,7 +152,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
                   />
                   {item.isLocked && (
                     <span
-                      className="absolute -top-1 -right-1.5 px-1 py-0.2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-[6px] sm:text-[7px] font-black tracking-tight shadow-2xs uppercase leading-none border border-surface"
+                      className="absolute -top-1 -right-1.5 px-1 py-0.2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-[7px] sm:text-[8px] font-black tracking-tight shadow-2xs uppercase leading-none border border-surface"
                       title="Réservé aux abonnés Pro"
                     >
                       PRO
@@ -160,7 +160,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
                   )}
                   {!item.isLocked && item.href === '/campus' && campusBadgeCount > 0 && (
                     <span
-                      className="absolute -top-1 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-danger-500 text-white text-[7px] sm:text-[8px] font-black flex items-center justify-center shadow-2xs border border-surface leading-none"
+                      className="absolute -top-1 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-danger-500 text-white text-[8px] sm:text-[9px] font-black flex items-center justify-center shadow-2xs border border-surface leading-none"
                       title={`${campusBadgeCount} notification${campusBadgeCount > 1 ? 's' : ''} sur le Campus`}
                     >
                       {campusBadgeCount > 9 ? '9+' : campusBadgeCount}
@@ -169,7 +169,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
                 </div>
                 <span
                   className={cn(
-                    'text-[7.5px] sm:text-[9.5px] font-medium leading-tight truncate max-w-full',
+                    'text-[8.5px] sm:text-[10px] font-medium leading-tight truncate max-w-full',
                     isActive && 'font-black'
                   )}
                 >
@@ -183,7 +183,7 @@ export function BottomNav({ profile, campusBadgeCount = 0 }: BottomNavProps) {
           <Link
             href="/settings"
             className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 py-0.5 px-0.5 relative',
+              'flex-1 h-full flex flex-col items-center justify-center gap-0.5 py-0.5 px-0.5 relative',
               'min-w-0 transition-all duration-200 group cursor-pointer',
               isSettingsActive
                 ? 'text-primary-600'

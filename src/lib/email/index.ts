@@ -54,7 +54,7 @@ export async function sendEmail({
       setTimeout(() => reject(new Error(`Timeout de l'API Resend après ${timeoutMs}ms`)), timeoutMs)
     )
 
-    const response = (await Promise.race([sendPromise, timeoutPromise])) as any
+    const response = await Promise.race([sendPromise, timeoutPromise])
 
     const latencyMs = Date.now() - startTime
 
@@ -76,9 +76,9 @@ export async function sendEmail({
       messageId,
       latencyMs,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     const latencyMs = Date.now() - startTime
-    const errorMessage = error?.message || 'Erreur inattendue lors de l’envoi de l’email'
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inattendue lors de l’envoi de l’email'
     console.error(`[Email Service] ❌ Exception lors de l’envoi à ${recipient} (${latencyMs}ms):`, errorMessage)
 
     return {

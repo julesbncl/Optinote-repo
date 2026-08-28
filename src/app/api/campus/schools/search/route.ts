@@ -1,5 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Forme (partielle) d'un enregistrement de l'API data.education.gouv.fr —
+// tous les champs sont optionnels côté API externe, d'où l'usage défensif
+// (fallbacks `||`) dans le mapping ci-dessous.
+interface EducationApiRecord {
+  identifiant_de_l_etablissement?: string
+  nom_etablissement?: string
+  type_etablissement?: string
+  libelle_nature?: string
+  nom_commune?: string
+  code_postal?: string
+  libelle_academie?: string
+  nom_academie?: string
+  adresse_1?: string
+  latitude?: number
+  longitude?: number
+  position?: { lat?: number; lon?: number }
+}
+
 // Seed fallback data au cas où l'API externe est injoignable (Lycées uniquement)
 const FALLBACK_SCHOOLS = [
   { uai: '0750654D', name: 'Lycée Henri-IV', city: 'Paris', postal_code: '75005', academy: 'Paris', latitude: 48.8463, longitude: 2.3473, type: 'Lycée' },
@@ -51,10 +69,10 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    const records = data.results || []
+    const records: EducationApiRecord[] = data.results || []
 
     const formatted = records
-      .map((r: any) => {
+      .map((r) => {
         const lat = r.latitude || r.position?.lat || null
         const lon = r.longitude || r.position?.lon || null
 
@@ -85,7 +103,7 @@ export async function GET(request: NextRequest) {
         }
       })
       // Filtrage strict : UNIQUEMENT les Lycées (exclusion systématique des écoles primaires, maternelles, collèges sans lycée)
-      .filter((item: any) => {
+      .filter((item) => {
         if (!item.latitude || !item.longitude || !item.name) return false
 
         const nameLower = item.name.toLowerCase()

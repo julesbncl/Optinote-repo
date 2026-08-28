@@ -111,10 +111,11 @@ export async function POST(request: NextRequest) {
     // forger un événement "checkout.session.completed" et s'octroyer un abonnement Pro
     // gratuit. Pour tester en local, utiliser `stripe listen` (fournit un vrai secret).
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Signature invalide'
+    console.error('Webhook signature verification failed:', message)
     return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
+      { error: `Webhook Error: ${message}` },
       { status: 400 }
     )
   }
@@ -181,6 +182,26 @@ export async function POST(request: NextRequest) {
           await supabaseAdmin.from('profiles').update({ free_months_credit: remaining }).eq('id', userId)
         }
 
+        // Programme partenaire créateurs : enregistre l'attribution une seule fois
+        // (user_id est UNIQUE) pour que les paiements récurrents à venir (voir
+        // 'invoice.paid' ci-dessous) puissent être rattachés au bon créateur.
+        const creatorCodeId = session.metadata?.creator_code_id
+        if (userId && creatorCodeId) {
+          try {
+            await supabaseAdmin.from('creator_code_redemptions').upsert(
+              {
+                creator_code_id: creatorCodeId,
+                user_id: userId,
+                stripe_customer_id: customerId || null,
+                stripe_subscription_id: (session.subscription as string) || null,
+              },
+              { onConflict: 'user_id', ignoreDuplicates: true }
+            )
+          } catch (err) {
+            console.error('Error recording creator code redemption:', err)
+          }
+        }
+
         break
       }
 
@@ -189,19 +210,22 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
         const userId = subscription.metadata?.supabase_user_id
-        const planTier = (subscription.metadata?.plan_tier as any) || 'monthly'
+        const planTier = subscription.metadata?.plan_tier || 'monthly'
         const interval =
-          (subscription.metadata?.billing_interval as any) ||
-          (subscription.items.data[0]?.plan?.interval as any) ||
+          subscription.metadata?.billing_interval ||
+          subscription.items.data[0]?.plan?.interval ||
           'month'
 
         const status = subscription.status
         const isActive = status === 'active' || status === 'trialing'
+        // Le SDK Stripe installé ne déclare plus current_period_end/start au niveau
+        // racine de l'abonnement, mais l'API le renvoie toujours ainsi pour la
+        // version configurée sur ce compte (même workaround que /api/stripe/sync).
         const currentPeriodEnd = new Date(
-          (subscription as any).current_period_end * 1000
+          (subscription as unknown as { current_period_end: number }).current_period_end * 1000
         ).toISOString()
         const currentPeriodStart = new Date(
-          (subscription as any).current_period_start * 1000
+          (subscription as unknown as { current_period_start: number }).current_period_start * 1000
         ).toISOString()
 
         // 1. If we have userId, update profiles directly
@@ -296,13 +320,54 @@ export async function POST(request: NextRequest) {
         break
       }
 
+      case 'invoice.paid': {
+        // Commission créateur : calculée sur CHAQUE facture payée (premier paiement
+        // et tous les renouvellements), pas seulement à la souscription initiale.
+        // metadata.creator_code_id est un instantané de la metadata de l'abonnement
+        // au moment de la facturation (Stripe le fournit directement sur la facture,
+        // pas besoin d'un appel API supplémentaire).
+        const invoice = event.data.object as Stripe.Invoice
+        const creatorCodeId = invoice.parent?.subscription_details?.metadata?.creator_code_id
+
+        if (creatorCodeId) {
+          try {
+            const { data: creatorCode } = await supabaseAdmin
+              .from('creator_codes')
+              .select('id, commission_percent, is_active')
+              .eq('id', creatorCodeId)
+              .maybeSingle()
+
+            if (creatorCode?.is_active) {
+              const commissionCents = Math.round(
+                (invoice.amount_paid * creatorCode.commission_percent) / 100
+              )
+
+              // stripe_invoice_id est UNIQUE : un rejeu du webhook ne compte jamais deux fois.
+              await supabaseAdmin.from('creator_earnings').upsert(
+                {
+                  creator_code_id: creatorCode.id,
+                  stripe_invoice_id: invoice.id,
+                  amount_cents: invoice.amount_paid,
+                  commission_cents: commissionCents,
+                  currency: invoice.currency || 'eur',
+                },
+                { onConflict: 'stripe_invoice_id', ignoreDuplicates: true }
+              )
+            }
+          } catch (err) {
+            console.error('Error recording creator earning:', err)
+          }
+        }
+        break
+      }
+
       default:
         // Other events ignored
         break
     }
 
     return NextResponse.json({ received: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error processing webhook event:', error)
     return NextResponse.json(
       { error: 'Webhook handler failed' },

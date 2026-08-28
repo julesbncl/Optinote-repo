@@ -129,28 +129,43 @@ export interface PlanningSlot {
   activity?: string
 }
 
-export interface GeneratedMessage {
-  id: string
-  user_id: string
-  message_type:
-    | 'absence'
-    | 'retard'
-    | 'question'
-    | 'rdv'
-    | 'rattrapage'
-    | 'autre'
-  context: string
-  teacher_name: string | null
-  generated_content: string
-  is_favorite: boolean
-  created_at: string
-}
-
 export interface AiUsage {
   id: string
   user_id: string
   action_type: string
   tokens_used: number
+  created_at: string
+}
+
+export interface CreatorCode {
+  id: string
+  code: string
+  creator_name: string
+  creator_email: string | null
+  owner_user_id: string | null
+  discount_percent: number
+  commission_percent: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface CreatorCodeRedemption {
+  id: string
+  creator_code_id: string
+  user_id: string
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  created_at: string
+}
+
+export interface CreatorEarning {
+  id: string
+  creator_code_id: string
+  stripe_invoice_id: string
+  amount_cents: number
+  commission_cents: number
+  currency: string
+  paid_out: boolean
   created_at: string
 }
 

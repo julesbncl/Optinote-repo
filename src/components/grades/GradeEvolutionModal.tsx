@@ -32,9 +32,17 @@ export function GradeEvolutionModal({ isOpen, onClose }: GradeEvolutionModalProp
   const [loading, setLoading] = useState(true)
   const [points, setPoints] = useState<EvolutionPoint[]>([])
 
+  // Réinitialise le chargement pendant le rendu à chaque ouverture (plutôt qu'un
+  // setState synchrone dans l'effect), pour ne laisser dans l'effect que le fetch
+  // asynchrone lui-même.
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
+    if (isOpen) setLoading(true)
+  }
+
   useEffect(() => {
     if (!isOpen) return
-    setLoading(true)
     fetch('/api/grades/evolution')
       .then((r) => (r.ok ? r.json() : { points: [] }))
       .then((data) => setPoints(data.points || []))
