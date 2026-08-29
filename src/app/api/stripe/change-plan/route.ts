@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
 import { PRICING_PLANS } from '@/lib/constants'
 import type Stripe from 'stripe'
@@ -104,7 +105,11 @@ export async function POST(request: Request) {
     // Le SDK Stripe installé ne déclare plus current_period_end au niveau racine
     // de l'abonnement (même workaround que le webhook et /api/stripe/sync), mais
     // l'API le renvoie toujours ainsi pour la version configurée sur ce compte.
-    await supabase
+    //
+    // Écriture via la clé de service : ces champs sont protégés contre toute
+    // modification directe par un utilisateur authentifié (voir migration 023).
+    const admin = createAdminClient()
+    await admin
       .from('profiles')
       .update({
         subscription_tier: targetPlanId,

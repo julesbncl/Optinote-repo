@@ -53,8 +53,11 @@ export async function POST(request: NextRequest) {
       })
       customerId = customer.id
 
-      // Save customer ID in profiles
-      await supabase
+      // Save customer ID in profiles — via la clé de service, ce champ étant
+      // protégé contre toute écriture directe par un utilisateur authentifié
+      // (voir migration 023).
+      const admin = createAdminClient()
+      await admin
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id)

@@ -4,6 +4,23 @@ import { getOpenAIClient } from '@/lib/ai/openai'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
+import { z } from 'zod'
+
+const planSlotSchema = z.object({
+  day: z.number().int().min(0).max(6),
+  startTime: z.string(),
+  endTime: z.string(),
+  subject: z.string(),
+  task: z.string(),
+  type: z.enum(['study', 'class', 'break', 'other']),
+  activity: z.string().optional(),
+})
+
+const adjustPlanningSchema = z.object({
+  prompt: z.string().min(3).max(500),
+  currentPlan: z.array(planSlotSchema).max(200).optional().default([]),
+  weekStart: z.string().optional(),
+})
 
 export async function POST(request: Request) {
   try {
@@ -41,15 +58,16 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
-    const { prompt, currentPlan = [], weekStart = new Date().toISOString().split('T')[0] } = body
-
-    if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 3) {
+    const body = await request.json().catch(() => ({}))
+    const parsedBody = adjustPlanningSchema.safeParse(body)
+    if (!parsedBody.success) {
       return NextResponse.json(
         { error: 'Veuillez préciser votre demande d’ajustement (ex: Sport tous les soirs 19h30-20h).' },
         { status: 400 }
       )
     }
+    const { prompt, currentPlan } = parsedBody.data
+    const weekStart = parsedBody.data.weekStart || new Date().toISOString().split('T')[0]
 
     const cleanPrompt = prompt.trim()
     let newSlots: Array<{
@@ -112,8 +130,16 @@ Génère les créneaux correspondant exactement à sa demande.`
         const rawContent = completion.choices[0]?.message?.content?.trim()
         if (rawContent) {
           const parsed = JSON.parse(rawContent)
-          if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
-            newSlots = parsed.slots
+          if (parsed && Array.isArray(parsed.slots)) {
+            // Ne garde que les créneaux dont la forme est exactement celle attendue :
+            // une réponse IA malformée ne doit jamais corrompre le planning enregistré.
+            const validatedSlots = parsed.slots
+              .map((slot: unknown) => planSlotSchema.safeParse(slot))
+              .filter((r: ReturnType<typeof planSlotSchema.safeParse>) => r.success)
+              .map((r: { success: true; data: z.infer<typeof planSlotSchema> }) => r.data)
+            if (validatedSlots.length > 0) {
+              newSlots = validatedSlots
+            }
           }
         }
       } catch (err: unknown) {

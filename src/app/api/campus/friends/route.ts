@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { notifyFriendRequest } from '@/lib/email/notifications'
 import type { Profile } from '@/types/database'
+import { z } from 'zod'
+
+const friendActionSchema = z.object({
+  friendId: z.string().uuid(),
+  action: z.enum(['request', 'accept', 'decline', 'remove']),
+})
 
 // Données spécifiques à l'utilisateur connecté (amis, demandes en attente) :
 // ne doit jamais être mise en cache, sous peine d'afficher une liste périmée.
@@ -132,12 +138,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { friendId, action } = body
-
-    if (!friendId) {
-      return NextResponse.json({ error: 'friendId requis' }, { status: 400 })
+    const body = await request.json().catch(() => ({}))
+    const parsed = friendActionSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'friendId (UUID) et action valides requis' }, { status: 400 })
     }
+    const { friendId, action } = parsed.data
 
     if (friendId === user.id) {
       return NextResponse.json({ error: 'Action impossible sur soi-même' }, { status: 400 })

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenAIClient } from '@/lib/ai/openai'
 import { PROMPTS } from '@/lib/ai/prompts'
 import { safeParseAIJson } from '@/lib/ai/json-parser'
@@ -139,7 +140,12 @@ export async function POST(request: Request) {
       verificationStatus = 'pending'
     }
 
-    const { data: updatedProfile, error: updateErr } = await supabase
+    // Écriture via la clé de service : verification_status/is_verified sont
+    // protégés en base contre toute modification directe par un utilisateur
+    // authentifié (voir migration 023) — seule cette route, après l'analyse
+    // IA ci-dessus, peut les changer.
+    const admin = createAdminClient()
+    const { data: updatedProfile, error: updateErr } = await admin
       .from('profiles')
       .update({
         school_certificate_url: filePath,

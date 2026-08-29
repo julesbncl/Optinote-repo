@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { BETA_ACCESS_CODE, BETA_ACCESS_WINDOW_END, isBetaAccessWindowActive } from '@/lib/constants'
 
@@ -50,7 +51,11 @@ export async function POST(request: Request) {
       .single()
 
     if (!profile?.beta_access_redeemed_at) {
-      const { error } = await supabase
+      // Écriture via la clé de service : ce champ est protégé contre toute
+      // écriture directe par un utilisateur authentifié (voir migration 023) —
+      // le code a déjà été validé côté serveur juste au-dessus.
+      const admin = createAdminClient()
+      const { error } = await admin
         .from('profiles')
         .update({ beta_access_redeemed_at: new Date().toISOString() })
         .eq('id', user.id)

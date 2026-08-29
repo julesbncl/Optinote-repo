@@ -6,6 +6,17 @@ import { generatePlanningSchema } from '@/lib/validators/planning'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
+import { z } from 'zod'
+
+const generatedPlanSlotSchema = z.object({
+  day: z.number().int().min(0).max(6),
+  startTime: z.string(),
+  endTime: z.string(),
+  subject: z.string(),
+  task: z.string(),
+  type: z.enum(['study', 'class', 'break', 'other']),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
+})
 
 export async function POST(request: Request) {
   try {
@@ -101,8 +112,14 @@ export async function POST(request: Request) {
         if (rawResponse) {
           const parsed = JSON.parse(rawResponse)
           if (parsed && Array.isArray(parsed.plan)) {
-            generatedPlan = parsed.plan
-            if (user) {
+            // Ne garde que les créneaux dont la forme est exactement celle attendue :
+            // une réponse IA malformée ne doit jamais corrompre le planning enregistré.
+            const validatedPlan = parsed.plan
+              .map((slot: unknown) => generatedPlanSlotSchema.safeParse(slot))
+              .filter((r: ReturnType<typeof generatedPlanSlotSchema.safeParse>) => r.success)
+              .map((r: { success: true; data: z.infer<typeof generatedPlanSlotSchema> }) => r.data)
+            generatedPlan = validatedPlan.length > 0 ? validatedPlan : null
+            if (generatedPlan && user) {
               await supabase.from('ai_usage').insert({
                 user_id: user.id,
                 action_type: 'generate_planning',

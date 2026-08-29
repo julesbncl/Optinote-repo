@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
 
 export async function POST(request: NextRequest) {
@@ -36,8 +37,12 @@ export async function POST(request: NextRequest) {
     if (belongsToCurrentUser && isActuallyPaid) {
       const planTier = session.metadata?.plan_tier || 'monthly'
 
-      // Update user profile in Supabase
-      const { error } = await supabase
+      // Écriture via la clé de service : ces champs sont protégés en base contre
+      // toute modification directe par un utilisateur authentifié (voir migration
+      // 023), donc seule cette route — après avoir vérifié le paiement ci-dessus —
+      // peut les activer.
+      const admin = createAdminClient()
+      const { error } = await admin
         .from('profiles')
         .update({
           is_pro: true,

@@ -16,8 +16,11 @@ export async function GET(request: NextRequest) {
       .limit(60)
 
     if (q) {
-      // Recherche insensible à la casse et partielle sur le nom, prénom, email, établissement
-      const cleanQ = q.replace(/[%_]/g, '')
+      // Recherche insensible à la casse et partielle sur le nom, prénom, email, établissement.
+      // On retire aussi virgules/parenthèses : syntaxiquement significatives dans la
+      // grammaire de filtre .or() de PostgREST, elles permettraient sinon d'injecter
+      // des clauses OU supplémentaires sur d'autres colonnes de la requête.
+      const cleanQ = q.replace(/[%_,()]/g, '')
       query = query.or(
         `full_name.ilike.%${cleanQ}%,email.ilike.%${cleanQ}%,school_name.ilike.%${cleanQ}%`
       )
