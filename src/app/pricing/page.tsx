@@ -61,7 +61,7 @@ function PricingContent() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_pro, subscription_tier, subscription_status, subscription_current_period_end, beta_access_redeemed_at')
+        .select('is_pro, subscription_tier, subscription_status, subscription_current_period_end')
         .eq('id', user.id)
         .single()
 

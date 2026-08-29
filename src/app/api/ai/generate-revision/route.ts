@@ -19,39 +19,41 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (user) {
-      // 2. Fetch profile & check quota for free tier (max 1 sheet)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
 
-      const quotaCheck = await checkRevisionSheetQuota(supabase, user.id, profile)
-      if (!quotaCheck.allowed) {
-        return NextResponse.json(
-          {
-            error:
-              quotaCheck.reason ||
-              'Limite de la version gratuite atteinte (1 fiche maximum). Passez à l’abonnement illimité pour continuer !',
-            code: 'UPGRADE_REQUIRED',
-            quota: 'revision_sheet',
-          },
-          { status: 403 }
-        )
-      }
+    // 2. Fetch profile & check quota for free tier (max 1 sheet)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
 
-      // 3. Rate limit
-      const rateLimit = await checkRateLimit(
-        `ai:revision:${user.id}`,
-        RATE_LIMITS.AI_CALLS_PER_MINUTE
+    const quotaCheck = await checkRevisionSheetQuota(supabase, user.id, profile)
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            quotaCheck.reason ||
+            'Limite de la version gratuite atteinte (1 fiche maximum). Passez à l’abonnement illimité pour continuer !',
+          code: 'UPGRADE_REQUIRED',
+          quota: 'revision_sheet',
+        },
+        { status: 403 }
       )
-      if (!rateLimit.success) {
-        return NextResponse.json(
-          { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
-          { status: 429 }
-        )
-      }
+    }
+
+    // 3. Rate limit
+    const rateLimit = await checkRateLimit(
+      `ai:revision:${user.id}`,
+      RATE_LIMITS.AI_CALLS_PER_MINUTE
+    )
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
+        { status: 429 }
+      )
     }
 
     // 4. Validate
@@ -100,13 +102,11 @@ export async function POST(request: Request) {
         if (rawResponse) {
           const parsed = safeParseAIJson(rawResponse)
           if (parsed && (parsed.content || parsed.title)) {
-            if (user) {
-              await supabase.from('ai_usage').insert({
-                user_id: user.id,
-                action_type: 'generate_revision',
-                tokens_used: completion.usage?.total_tokens || 0,
-              })
-            }
+            await supabase.from('ai_usage').insert({
+              user_id: user.id,
+              action_type: 'generate_revision',
+              tokens_used: completion.usage?.total_tokens || 0,
+            })
             return NextResponse.json({
               title: parsed.title || (subjectHint ? `Synthèse : ${subjectHint}` : 'Fiche de Révision'),
               subject: parsed.subject || subjectHint || 'Général',
