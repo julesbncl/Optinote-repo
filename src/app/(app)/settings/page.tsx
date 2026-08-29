@@ -45,6 +45,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { compressImage } from '@/lib/utils/image-compression'
 import type { Profile } from '@/types/database'
 
 const DEFAULT_PROFILE: Profile = {
@@ -334,13 +335,30 @@ export default function SettingsPage() {
 
       let finalUrl: string | null = null
 
+      // Compresse l'avatar côté client avant l'upload (petite taille suffisante,
+      // ce qui économise bande passante et stockage, surtout sur mobile).
+      let uploadFile: File = file
+      let fallbackDataUrl: string | null = null
+      try {
+        const compressed = await compressImage(file, {
+          maxWidth: 512,
+          maxHeight: 512,
+          quality: 0.85,
+          format: 'image/jpeg',
+        })
+        uploadFile = compressed.file
+        fallbackDataUrl = compressed.dataUrl
+      } catch (compressErr) {
+        console.error('Avatar compression failed, uploading original file:', compressErr)
+      }
+
       if (user) {
-        const fileExt = file.name.split('.').pop() || 'jpg'
+        const fileExt = uploadFile.name.split('.').pop() || 'jpg'
         const filePath = `${user.id}/${Date.now()}.${fileExt}`
 
         const { error: uploadErr } = await supabase.storage
           .from('avatars')
-          .upload(filePath, file, { upsert: true })
+          .upload(filePath, uploadFile, { upsert: true })
 
         if (!uploadErr) {
           const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
@@ -350,11 +368,13 @@ export default function SettingsPage() {
 
       // Fallback si bucket non créé ou mode local
       if (!finalUrl) {
-        finalUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.readAsDataURL(file)
-        })
+        finalUrl =
+          fallbackDataUrl ??
+          (await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(uploadFile)
+          }))
       }
 
       if (user && finalUrl) {
@@ -411,11 +431,31 @@ export default function SettingsPage() {
         return
       }
 
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`
+      // Compresse le certificat côté client s'il s'agit d'une image (les PDF sont
+      // transmis tels quels). On garde une résolution/qualité suffisante pour que
+      // l'analyse par IA Vision et la relecture manuelle restent fiables.
+      let uploadFile: File = file
+      let uploadExt = fileExt
+      if (file.type.startsWith('image/')) {
+        try {
+          const compressed = await compressImage(file, {
+            maxWidth: 1800,
+            maxHeight: 1800,
+            quality: 0.85,
+            format: 'image/jpeg',
+          })
+          uploadFile = compressed.file
+          uploadExt = 'jpg'
+        } catch (compressErr) {
+          console.error('Certificate compression failed, uploading original file:', compressErr)
+        }
+      }
+
+      const filePath = `${user.id}/${Date.now()}.${uploadExt}`
 
       const { error: uploadErr } = await supabase.storage
         .from('school-certificates')
-        .upload(filePath, file, { upsert: true, contentType: file.type })
+        .upload(filePath, uploadFile, { upsert: true, contentType: uploadFile.type })
 
       if (uploadErr) {
         console.error('Error uploading certificate:', uploadErr)

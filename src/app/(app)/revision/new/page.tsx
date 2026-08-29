@@ -427,9 +427,9 @@ export default function NewRevisionPage() {
         {errorMessage && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-900 text-xs flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="font-bold">La génération a rencontré un problème</p>
-              <p className="mt-0.5 text-red-700">{errorMessage}</p>
+              <p className="mt-0.5 text-red-700 break-words">{errorMessage}</p>
               <button
                 type="button"
                 onClick={() => setErrorMessage(null)}

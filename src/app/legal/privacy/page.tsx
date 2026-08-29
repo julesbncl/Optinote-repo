@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
               <li><strong>Supprimer mon compte</strong> : efface définitivement et immédiatement ton compte et toutes les données associées. Cette action résilie automatiquement tout abonnement Pro actif.</li>
             </ul>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Pour toute autre demande relative à tes données (rectification, question, réclamation), écris-nous à <strong>contact@optinote.fr</strong>.
+              Pour toute autre demande relative à tes données (rectification, question, réclamation), écris-nous à <strong><a href="mailto:contact@optinote.fr" className="text-primary-600 hover:underline">contact@optinote.fr</a></strong>.
             </p>
           </section>
         </div>

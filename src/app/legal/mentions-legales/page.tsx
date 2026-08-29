@@ -50,7 +50,7 @@ export default function MentionsLegalesPage() {
             <div className="p-4 bg-surface-secondary rounded-xl text-sm text-text-secondary space-y-1">
               <p><strong>Dénomination :</strong> OptiNote SAS</p>
               <p><strong>Siège social :</strong> Paris, France</p>
-              <p><strong>Contact :</strong> contact@optinote.fr</p>
+              <p><strong>Contact :</strong> <a href="mailto:contact@optinote.fr" className="text-primary-600 hover:underline">contact@optinote.fr</a></p>
               <p><strong>Directeur de la publication :</strong> Direction OptiNote</p>
             </div>
           </section>

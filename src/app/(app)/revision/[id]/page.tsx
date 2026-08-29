@@ -272,7 +272,7 @@ export default function RevisionDetailPage({
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {editing ? (
             <Input
               value={editTitle}
@@ -280,7 +280,7 @@ export default function RevisionDetailPage({
               className="text-lg sm:text-xl font-bold"
             />
           ) : (
-            <h1 className="text-xl sm:text-2xl font-black text-text-primary">
+            <h1 className="text-xl sm:text-2xl font-black text-text-primary break-words">
               {cleanPlainText(sheet.title)}
             </h1>
           )}

@@ -229,7 +229,7 @@ export function RevisionContentRenderer({
         >
           <div className="flex items-start gap-2">
             <Bookmark className="h-4 w-4 sm:h-5 sm:w-5 text-primary-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs sm:text-sm font-medium leading-relaxed">
+            <div className="min-w-0 break-words text-xs sm:text-sm font-medium leading-relaxed">
               {blockquoteLines.map((l, i) => (
                 <p key={i} className="my-0.5">
                   {renderInlineText(l)}
@@ -295,7 +295,7 @@ export function RevisionContentRenderer({
           >
             {isBacWarning ? '🎯' : '📌'}
           </div>
-          <h2 className="text-sm sm:text-lg font-black tracking-tight">
+          <h2 className="min-w-0 break-words text-sm sm:text-lg font-black tracking-tight">
             {renderInlineText(titleText)}
           </h2>
         </div>
@@ -324,7 +324,7 @@ export function RevisionContentRenderer({
           ) : (
             <Lightbulb className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-600 flex-shrink-0" />
           )}
-          <span>{renderInlineText(subTitleText)}</span>
+          <span className="min-w-0 break-words">{renderInlineText(subTitleText)}</span>
         </div>
       )
       return
@@ -350,7 +350,7 @@ export function RevisionContentRenderer({
           className="flex items-start gap-2 text-xs sm:text-sm text-text-secondary leading-relaxed"
         >
           <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5 sm:mt-2" />
-          <span className="flex-1">{renderInlineText(itemText)}</span>
+          <span className="flex-1 min-w-0 break-words">{renderInlineText(itemText)}</span>
         </li>
       )
       return
@@ -369,7 +369,7 @@ export function RevisionContentRenderer({
           <span className="h-4 w-4 sm:h-5 sm:w-5 rounded-md bg-surface-secondary border border-border text-primary-700 font-bold text-[9px] sm:text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
             {num}
           </span>
-          <span className="flex-1">{renderInlineText(itemText)}</span>
+          <span className="flex-1 min-w-0 break-words">{renderInlineText(itemText)}</span>
         </li>
       )
       return
@@ -427,7 +427,7 @@ export function RevisionContentRenderer({
                       <span className="h-4.5 w-4.5 rounded-full bg-purple-50 text-purple-700 font-black text-[10px] sm:text-xs flex items-center justify-center flex-shrink-0 mt-0.5 border border-purple-200">
                         ?
                       </span>
-                      <span className="text-xs sm:text-sm font-bold text-text-primary group-hover:text-purple-700 transition-colors">
+                      <span className="min-w-0 break-words text-xs sm:text-sm font-bold text-text-primary group-hover:text-purple-700 transition-colors">
                         {renderInlineText(fc.question)}
                       </span>
                     </div>
@@ -441,7 +441,7 @@ export function RevisionContentRenderer({
                   {isOpen && (
                     <div className="mt-2.5 pt-2.5 border-t border-border/60 text-xs sm:text-sm text-purple-950 bg-purple-50/50 p-2.5 rounded-lg border border-purple-100 flex items-start gap-2 animate-in fade-in-50 duration-200">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      <div className="leading-relaxed">
+                      <div className="min-w-0 break-words leading-relaxed">
                         {renderInlineText(fc.answer)}
                       </div>
                     </div>

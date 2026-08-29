@@ -1,6 +1,13 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { APP_NAME } from '@/lib/constants'
+
+export const metadata: Metadata = {
+  title: 'Configuration de ton profil',
+  description:
+    'Personnalise OptiNote en indiquant ta classe, tes spécialités et tes objectifs scolaires.',
+}
 
 export default function OnboardingLayout({
   children,

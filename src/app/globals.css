@@ -95,6 +95,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Defensive safety net: clip any accidental horizontal overflow on mobile
+       (a few px wider element, long unbroken word, etc.) instead of letting the
+       whole page scroll sideways. Safe because the app has no horizontal
+       (left/right) sticky positioning — only sticky top-0 headers, which this
+       does not affect. */
+    overflow-x: hidden;
   }
 
   body {
@@ -102,6 +108,7 @@
     color: var(--color-text-primary);
     background-color: var(--color-surface-secondary);
     line-height: 1.6;
+    overflow-x: hidden;
   }
 
   /* Scrollbar styling */
