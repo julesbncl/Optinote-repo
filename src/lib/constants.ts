@@ -253,3 +253,12 @@ export function isFreeAccessPeriodActive(): boolean {
   return new Date() < FREE_PRO_ACCESS_UNTIL
 }
 
+// Nombre de jours restants avant la fin de l'accès gratuit (arrondi au jour
+// supérieur, jamais négatif). Sert aux messages "encore X jours" sur les
+// pages publiques, pour que l'annonce reste juste peu importe le jour où
+// elle est lue plutôt que d'afficher un nombre de jours codé en dur.
+export function getFreeAccessDaysRemaining(): number {
+  const msRemaining = FREE_PRO_ACCESS_UNTIL.getTime() - Date.now()
+  return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)))
+}
+

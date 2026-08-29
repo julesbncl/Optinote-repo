@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Sparkles,
@@ -19,9 +19,19 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { SnapMapDemo } from '@/components/landing/SnapMapDemo'
+import { getFreeAccessDaysRemaining } from '@/lib/constants'
 
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<'campus' | 'planning' | 'revision' | 'grades'>('campus')
+
+  // Calculé côté client après montage : cette page est pré-rendue statiquement,
+  // donc évaluer getFreeAccessDaysRemaining() au niveau du rendu figerait le
+  // compte à jours restants tel qu'il était au moment du build.
+  const [freeDaysRemaining, setFreeDaysRemaining] = useState(0)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFreeDaysRemaining(getFreeAccessDaysRemaining())
+  }, [])
 
   const handleFeatureClick = (tab: 'campus' | 'planning' | 'revision' | 'grades') => {
     setActiveTab(tab)
@@ -40,7 +50,7 @@ export default function LandingPage() {
         href="/register"
         className="block bg-gradient-to-r from-primary-600 to-accent-600 text-white text-center py-1 px-2 text-[9px] sm:text-xs font-semibold hover:opacity-90 transition-opacity"
       >
-        🚀 OptiNote Pro offert à tous jusqu&apos;au 1er septembre — Crée ton compte gratuitement →
+        🚀 OptiNote Pro offert à tous encore {freeDaysRemaining > 0 ? `${freeDaysRemaining} jour${freeDaysRemaining > 1 ? 's' : ''}` : "aujourd'hui"} (jusqu&apos;au 1er septembre) — Crée ton compte gratuitement →
       </Link>
 
       {/* ═══════════════════════════════════════════════════════

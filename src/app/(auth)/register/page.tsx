@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { registerSchema } from '@/lib/validators/auth'
+import { getFreeAccessDaysRemaining } from '@/lib/constants'
 import { LogoIcon } from '@/components/ui/Logo'
 import {
   Mail,
@@ -25,6 +26,15 @@ function RegisterForm() {
   const referralCode = searchParams.get('ref')?.trim().toUpperCase() || null
   const supabase = createClient()
   const [isLoading, setIsLoading] = useState(false)
+
+  // Calculé côté client après montage : cette page est pré-rendue statiquement,
+  // donc évaluer getFreeAccessDaysRemaining() au niveau du rendu figerait le
+  // compte à jours restants tel qu'il était au moment du build.
+  const [freeDaysRemaining, setFreeDaysRemaining] = useState(0)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFreeDaysRemaining(getFreeAccessDaysRemaining())
+  }, [])
 
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -170,7 +180,9 @@ function RegisterForm() {
         <div className="mt-1 p-1 sm:p-1.5 bg-primary-50/90 border border-primary-200/80 rounded-md sm:rounded-lg text-left text-[7.5px] sm:text-xs text-primary-900 flex items-center gap-1">
           <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-600 flex-shrink-0" />
           <span>
-            <strong>Accès Pro 100% gratuit</strong> jusqu&apos;au 1er septembre, sans code ni carte bancaire.
+            <strong>Accès Pro 100% gratuit</strong> encore{' '}
+            {freeDaysRemaining > 0 ? `${freeDaysRemaining} jour${freeDaysRemaining > 1 ? 's' : ''}` : "aujourd'hui"}{' '}
+            (jusqu&apos;au 1er septembre), sans code ni carte bancaire.
           </span>
         </div>
       </div>
