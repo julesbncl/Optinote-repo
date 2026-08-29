@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { registerSchema } from '@/lib/validators/auth'
 import { getFreeAccessDaysRemaining } from '@/lib/constants'
 import { LogoIcon } from '@/components/ui/Logo'
+import { TurnstileWidget, type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 import {
   Mail,
   Lock,
@@ -41,7 +42,9 @@ function RegisterForm() {
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
-
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -50,6 +53,11 @@ function RegisterForm() {
 
     if (!acceptedTerms) {
       setErrorMessage('Merci d’accepter les CGU et la Politique de Confidentialité pour continuer.')
+      return
+    }
+
+    if (turnstileSiteKey && !turnstileToken) {
+      setErrorMessage('Merci de valider le test de sécurité avant de continuer.')
       return
     }
 
@@ -77,6 +85,24 @@ function RegisterForm() {
     setIsLoading(true)
 
     try {
+      // 0. Vérifier le jeton anti-robot côté serveur avant toute création de compte
+      if (turnstileSiteKey && turnstileToken) {
+        const verifyRes = await fetch('/api/auth/verify-turnstile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: turnstileToken }),
+        })
+        const verifyData = await verifyRes.json()
+        if (!verifyRes.ok || !verifyData.success) {
+          setErrorMessage(verifyData.error || 'Vérification anti-robot échouée. Réessaie.')
+          toast.error('Vérification anti-robot échouée')
+          turnstileRef.current?.reset()
+          setTurnstileToken(null)
+          setIsLoading(false)
+          return
+        }
+      }
+
       // 1. Sign up user via Supabase Auth with redirect callback
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
@@ -99,6 +125,8 @@ function RegisterForm() {
           setErrorMessage(error.message)
           toast.error(error.message)
         }
+        turnstileRef.current?.reset()
+        setTurnstileToken(null)
         return
       }
 
@@ -157,6 +185,8 @@ function RegisterForm() {
         setErrorMessage('Une erreur est survenue lors de la création du compte.')
         toast.error('Erreur de création')
       }
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
     } finally {
       setIsLoading(false)
     }
@@ -341,6 +371,17 @@ function RegisterForm() {
             d&apos;OptiNote
           </label>
         </div>
+
+        {/* Vérification anti-robot (n'apparaît que si configurée) */}
+        {turnstileSiteKey && (
+          <div className="pt-0.5">
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken(null)}
+            />
+          </div>
+        )}
 
         {/* Submit Button */}
         <button

@@ -2,6 +2,48 @@ import type { Profile } from '@/types/database'
 import { isUserSubscribed } from '@/lib/stripe/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 
+/**
+ * Plafond quotidien (glissant sur 24h) sur un ou plusieurs types d'action
+ * `ai_usage.action_type`, indépendant du statut d'abonnement — sert de
+ * garde-fou anti-abus sur les fonctionnalités IA coûteuses (voir
+ * AI_DAILY_LIMITS dans lib/constants.ts), notamment pendant la période où
+ * l'accès Pro est offert à tous les comptes.
+ */
+export async function checkDailyAIQuota(
+  supabase: SupabaseClient,
+  userId: string,
+  actionTypes: string[],
+  maxPerDay: number
+): Promise<QuotaCheckResult> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+  const { count, error } = await supabase
+    .from('ai_usage')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('action_type', actionTypes)
+    .gte('created_at', since)
+
+  if (error) {
+    console.error('Error counting daily AI usage:', error)
+    // Une erreur de comptage ne doit pas devenir elle-même un blocage :
+    // on laisse passer plutôt que de casser une fonctionnalité pour tous.
+    return { allowed: true, currentUsage: 0, maxAllowed: maxPerDay }
+  }
+
+  const currentUsage = count || 0
+
+  return {
+    allowed: currentUsage < maxPerDay,
+    currentUsage,
+    maxAllowed: maxPerDay,
+    reason:
+      currentUsage >= maxPerDay
+        ? 'Limite quotidienne de générations IA atteinte pour cette fonctionnalité. Réessaie demain.'
+        : undefined,
+  }
+}
+
 export interface QuotaCheckResult {
   allowed: boolean
   currentUsage: number

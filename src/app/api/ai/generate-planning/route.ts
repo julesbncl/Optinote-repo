@@ -4,8 +4,9 @@ import { getOpenAIClient } from '@/lib/ai/openai'
 import { PROMPTS } from '@/lib/ai/prompts'
 import { generatePlanningSchema } from '@/lib/validators/planning'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RATE_LIMITS } from '@/lib/constants'
+import { RATE_LIMITS, AI_DAILY_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
+import { checkDailyAIQuota } from '@/lib/utils/quotas'
 import { z } from 'zod'
 
 const generatedPlanSlotSchema = z.object({
@@ -58,6 +59,17 @@ export async function POST(request: Request) {
         { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
         { status: 429 }
       )
+    }
+
+    // 3bis. Daily quota (indépendant du statut d'abonnement)
+    const dailyQuota = await checkDailyAIQuota(
+      supabase,
+      user.id,
+      ['generate_planning'],
+      AI_DAILY_LIMITS.GENERATE_PLANNING_PER_DAY
+    )
+    if (!dailyQuota.allowed) {
+      return NextResponse.json({ error: dailyQuota.reason }, { status: 429 })
     }
 
     // 4. Validate

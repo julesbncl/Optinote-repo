@@ -139,6 +139,21 @@ export const RATE_LIMITS = {
   CHAT_MESSAGES_PER_MINUTE: 20,
 } as const
 
+// Plafonds quotidiens (glissants sur 24h) par compte pour les fonctionnalités
+// IA, en complément du rate-limit par minute ci-dessus. Les fonctionnalités
+// utilisant la vision (photo) coûtent nettement plus cher par appel que les
+// fonctionnalités texte, donc leur plafond est volontairement plus bas —
+// large mesure d'avant-lancement pour éviter qu'un compte gratuit (Pro est
+// offert à tous jusqu'au 1er septembre) ne consomme un budget OpenAI
+// disproportionné, sans gêner un usage normal d'élève.
+export const AI_DAILY_LIMITS = {
+  GENERATE_REVISION_PER_DAY: 20,
+  GENERATE_PLANNING_PER_DAY: 15,
+  ADJUST_PLANNING_PER_DAY: 30,
+  SCANNER_TIMETABLE_PER_DAY: 5,
+  VERIFY_CERTIFICATE_PER_DAY: 5,
+} as const
+
 // Subscription Pricing Plans (Free, Monthly, Annual)
 export const PROMO_DISCOUNT_PERCENT = 15
 export const VALID_PROMO_CODES = [

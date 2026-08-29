@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/ai/openai'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RATE_LIMITS } from '@/lib/constants'
+import { RATE_LIMITS, AI_DAILY_LIMITS } from '@/lib/constants'
 import { isUserSubscribed } from '@/lib/stripe/server'
+import { checkDailyAIQuota } from '@/lib/utils/quotas'
 import { z } from 'zod'
 
 const planSlotSchema = z.object({
@@ -56,6 +57,16 @@ export async function POST(request: Request) {
         { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
         { status: 429 }
       )
+    }
+
+    const dailyQuota = await checkDailyAIQuota(
+      supabase,
+      user.id,
+      ['adjust_planning'],
+      AI_DAILY_LIMITS.ADJUST_PLANNING_PER_DAY
+    )
+    if (!dailyQuota.allowed) {
+      return NextResponse.json({ error: dailyQuota.reason }, { status: 429 })
     }
 
     const body = await request.json().catch(() => ({}))
@@ -142,6 +153,12 @@ Génère les créneaux correspondant exactement à sa demande.`
             }
           }
         }
+
+        await supabase.from('ai_usage').insert({
+          user_id: user.id,
+          action_type: 'adjust_planning',
+          tokens_used: completion.usage?.total_tokens || 0,
+        })
       } catch (err: unknown) {
         console.error('OpenAI adjust planning error, fallback to parser:', err instanceof Error ? err.message : String(err))
       }

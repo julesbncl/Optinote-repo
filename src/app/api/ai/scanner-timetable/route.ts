@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/ai/openai'
 import { PROMPTS } from '@/lib/ai/prompts'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RATE_LIMITS } from '@/lib/constants'
+import { RATE_LIMITS, AI_DAILY_LIMITS } from '@/lib/constants'
+import { checkDailyAIQuota } from '@/lib/utils/quotas'
 
 import { scannerTimetableSchema } from '@/lib/validators/ai'
 
@@ -65,6 +66,18 @@ export async function POST(request: Request) {
       )
     }
 
+    // 2bis. Daily quota — vision est la fonctionnalité IA la plus coûteuse par
+    // appel, plafond volontairement bas.
+    const dailyQuota = await checkDailyAIQuota(
+      supabase,
+      user.id,
+      ['scanner_timetable'],
+      AI_DAILY_LIMITS.SCANNER_TIMETABLE_PER_DAY
+    )
+    if (!dailyQuota.allowed) {
+      return NextResponse.json({ error: dailyQuota.reason }, { status: 429 })
+    }
+
     // 3. Parse and Validate Request Payload with Zod
     const body = await request.json()
     const parsed = scannerTimetableSchema.safeParse(body)
@@ -95,7 +108,12 @@ export async function POST(request: Request) {
                   type: 'image_url',
                   image_url: {
                     url: imageUrl,
-                    detail: imageUrl.startsWith('data:') ? 'low' : 'high',
+                    // Toujours 'low' : l'app envoie une photo déjà compressée côté
+                    // client (max 1800px) et 'low' suffit largement à lire un
+                    // emploi du temps — évite aussi qu'un appel direct à l'API
+                    // avec une URL externe ne déclenche le mode 'high', bien plus
+                    // coûteux, sans bénéfice réel de précision.
+                    detail: 'low',
                   },
                 },
               ],
@@ -111,13 +129,11 @@ export async function POST(request: Request) {
           const parsed = JSON.parse(rawResponse)
 
           // Track tokens
-          if (user) {
-            await supabase.from('ai_usage').insert({
-              user_id: user.id,
-              feature: 'scanner_timetable',
-              tokens_used: completion.usage?.total_tokens || 0,
-            })
-          }
+          await supabase.from('ai_usage').insert({
+            user_id: user.id,
+            action_type: 'scanner_timetable',
+            tokens_used: completion.usage?.total_tokens || 0,
+          })
 
           // Validation & Sanitization des créneaux
           const rawTimetable: RawTimetableItem[] = Array.isArray(parsed.timetable)

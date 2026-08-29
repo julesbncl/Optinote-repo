@@ -4,8 +4,8 @@ import { getOpenAIClient } from '@/lib/ai/openai'
 import { PROMPTS } from '@/lib/ai/prompts'
 import { generateRevisionSchema } from '@/lib/validators/revision'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RATE_LIMITS } from '@/lib/constants'
-import { checkRevisionSheetQuota } from '@/lib/utils/quotas'
+import { RATE_LIMITS, AI_DAILY_LIMITS } from '@/lib/constants'
+import { checkRevisionSheetQuota, checkDailyAIQuota } from '@/lib/utils/quotas'
 
 import { safeParseAIJson } from '@/lib/ai/json-parser'
 
@@ -54,6 +54,17 @@ export async function POST(request: Request) {
         { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },
         { status: 429 }
       )
+    }
+
+    // 3bis. Daily quota (indépendant du statut d'abonnement)
+    const dailyQuota = await checkDailyAIQuota(
+      supabase,
+      user.id,
+      ['generate_revision'],
+      AI_DAILY_LIMITS.GENERATE_REVISION_PER_DAY
+    )
+    if (!dailyQuota.allowed) {
+      return NextResponse.json({ error: dailyQuota.reason }, { status: 429 })
     }
 
     // 4. Validate

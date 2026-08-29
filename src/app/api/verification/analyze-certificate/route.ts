@@ -5,7 +5,8 @@ import { getOpenAIClient } from '@/lib/ai/openai'
 import { PROMPTS } from '@/lib/ai/prompts'
 import { safeParseAIJson } from '@/lib/ai/json-parser'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RATE_LIMITS } from '@/lib/constants'
+import { RATE_LIMITS, AI_DAILY_LIMITS } from '@/lib/constants'
+import { checkDailyAIQuota } from '@/lib/utils/quotas'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -40,6 +41,16 @@ export async function POST(request: Request) {
         { error: `Trop de tentatives. Réessaie dans ${rateLimit.resetIn}s` },
         { status: 429 }
       )
+    }
+
+    const dailyQuota = await checkDailyAIQuota(
+      supabase,
+      user.id,
+      ['verify_certificate'],
+      AI_DAILY_LIMITS.VERIFY_CERTIFICATE_PER_DAY
+    )
+    if (!dailyQuota.allowed) {
+      return NextResponse.json({ error: dailyQuota.reason }, { status: 429 })
     }
 
     const body = await request.json()
