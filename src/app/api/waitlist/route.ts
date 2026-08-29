@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 import { BETA_ACCESS_CODE } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request)
-    const rateLimit = checkRateLimit(`waitlist:${ip}`, 5, 60_000)
+    const rateLimit = await checkRateLimit(`waitlist:${ip}`, 5, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Trop de tentatives. Réessaie dans ${rateLimit.resetIn}s` },
@@ -25,9 +26,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const classLevel = typeof body.classLevel === 'string' ? body.classLevel.trim().slice(0, 100) : null
+    const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : undefined
 
     if (!EMAIL_REGEX.test(email)) {
       return NextResponse.json({ error: 'Adresse e-mail invalide' }, { status: 400 })
+    }
+
+    const isHuman = await verifyTurnstileToken(turnstileToken, ip)
+    if (!isHuman) {
+      return NextResponse.json({ error: 'Vérification anti-robot échouée, réessaie.' }, { status: 403 })
     }
 
     const supabase = await createClient()

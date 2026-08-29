@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   const rateLimitRule = getRouteRateLimitRule(pathname)
   if (rateLimitRule) {
     const rateLimitKey = `rl:${pathname.startsWith('/api/') ? 'api' : 'page'}:${pathname}:${ip}`
-    const limitResult = checkRateLimit(rateLimitKey, rateLimitRule.maxRequests, rateLimitRule.windowMs)
+    const limitResult = await checkRateLimit(rateLimitKey, rateLimitRule.maxRequests, rateLimitRule.windowMs)
 
     if (!limitResult.success) {
       // Pour les routes API : Réponse JSON 429 standard

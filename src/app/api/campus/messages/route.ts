@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit
-    const rateLimit = checkRateLimit(`chat:${user.id}`, RATE_LIMITS.CHAT_MESSAGES_PER_MINUTE)
+    const rateLimit = await checkRateLimit(`chat:${user.id}`, RATE_LIMITS.CHAT_MESSAGES_PER_MINUTE)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Envoi trop rapide. Attends ${rateLimit.resetIn}s` },

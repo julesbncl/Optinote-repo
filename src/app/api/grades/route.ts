@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = getClientIp(request)
-    const rateLimit = checkRateLimit(`grade_post:${user.id || ip}`, 60, 60_000)
+    const rateLimit = await checkRateLimit(`grade_post:${user.id || ip}`, 60, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: 'Trop de requêtes. Veuillez patienter.' },

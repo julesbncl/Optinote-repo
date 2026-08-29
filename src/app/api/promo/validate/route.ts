@@ -9,7 +9,7 @@ import { VALID_PROMO_CODES, PROMO_DISCOUNT_PERCENT } from '@/lib/constants'
 // Rate-limité pour empêcher l'énumération de codes valides par force brute.
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  const rateLimit = checkRateLimit(`promo_validate:${ip}`, 20, 60_000)
+  const rateLimit = await checkRateLimit(`promo_validate:${ip}`, 20, 60_000)
   if (!rateLimit.success) {
     return NextResponse.json({ valid: false, error: 'Trop de tentatives. Réessaie dans un instant.' }, { status: 429 })
   }

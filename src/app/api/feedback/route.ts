@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const rateLimit = checkRateLimit(`feedback:${user.id}`, 5, 60_000)
+    const rateLimit = await checkRateLimit(`feedback:${user.id}`, 5, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Trop d'envois. Réessaie dans ${rateLimit.resetIn}s` },

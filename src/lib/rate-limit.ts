@@ -1,9 +1,16 @@
 import { type NextRequest } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // ═══════════════════════════════════════════════════════
 // OptiNote — Rate Limiting Utility (Anti Brute-Force & DDoS)
 // ═══════════════════════════════════════════════════════
-
+// Compteur persistant dans Postgres (fonction `check_rate_limit`, migration
+// 025) plutôt qu'une Map en mémoire : sur Vercel, chaque instance serverless
+// a sa propre mémoire (et un cold start la remet à zéro), donc un compteur
+// en mémoire ne garantissait rien sur plusieurs instances. En cas d'erreur
+// réseau/DB (ex: pic de trafic), on choisit de laisser passer la requête
+// plutôt que de bloquer tout le site — un rate limiter qui échoue ne doit
+// jamais devenir lui-même un point de panne.
 const rateLimitMap = new Map<
   string,
   { count: number; lastReset: number }
@@ -36,12 +43,14 @@ export function getClientIp(request: NextRequest): string {
 }
 
 /**
- * Vérifie les quotas de requêtes pour un identifiant donné (IP ou User ID)
+ * Repli en mémoire (best-effort, propre à cette seule instance) — utilisé
+ * uniquement si l'appel à Postgres échoue, pour que le rate limiter ne
+ * devienne jamais un point de panne du site.
  */
-export function checkRateLimit(
+function checkRateLimitInMemory(
   identifier: string,
   maxRequests: number,
-  windowMs: number = 60_000
+  windowMs: number
 ): RateLimitResult {
   const now = Date.now()
   const entry = rateLimitMap.get(identifier)
@@ -72,6 +81,41 @@ export function checkRateLimit(
     remaining: maxRequests - entry.count,
     limit: maxRequests,
     resetIn: Math.ceil((windowMs - (now - entry.lastReset)) / 1000),
+  }
+}
+
+/**
+ * Vérifie les quotas de requêtes pour un identifiant donné (IP ou User ID).
+ * Compteur partagé et persistant (Postgres), donc fiable même avec plusieurs
+ * instances serverless actives en parallèle.
+ */
+export async function checkRateLimit(
+  identifier: string,
+  maxRequests: number,
+  windowMs: number = 60_000
+): Promise<RateLimitResult> {
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .rpc('check_rate_limit', {
+        p_key: identifier,
+        p_max_requests: maxRequests,
+        p_window_ms: windowMs,
+      })
+      .single()
+
+    if (error || !data) throw error || new Error('Empty rate limit response')
+
+    const result = data as { allowed: boolean; remaining: number; reset_in_seconds: number }
+    return {
+      success: result.allowed,
+      remaining: result.remaining,
+      limit: maxRequests,
+      resetIn: result.reset_in_seconds,
+    }
+  } catch (err) {
+    console.warn('Rate limit DB check failed, falling back to in-memory:', err)
+    return checkRateLimitInMemory(identifier, maxRequests, windowMs)
   }
 }
 

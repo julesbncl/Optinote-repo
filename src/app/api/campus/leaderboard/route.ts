@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const rateLimit = checkRateLimit(`leaderboard:${user.id}`, 30, 60_000)
+    const rateLimit = await checkRateLimit(`leaderboard:${user.id}`, 30, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },

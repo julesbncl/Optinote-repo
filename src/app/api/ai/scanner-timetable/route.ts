@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Rate limit check
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `ai:scanner-timetable:${user.id}`,
       RATE_LIMITS.AI_CALLS_PER_MINUTE
     )

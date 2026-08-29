@@ -13,7 +13,7 @@ const sendVerificationSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request)
-    const rateLimit = checkRateLimit(`email:verify:${ip}`, 5, 60_000)
+    const rateLimit = await checkRateLimit(`email:verify:${ip}`, 5, 60_000)
 
     if (!rateLimit.success) {
       return NextResponse.json(

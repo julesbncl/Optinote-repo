@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = getClientIp(request)
-    const rateLimit = checkRateLimit(`sim:${user.id || ip}`, 30, 60_000)
+    const rateLimit = await checkRateLimit(`sim:${user.id || ip}`, 30, 60_000)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: 'Trop de simulations demandées. Veuillez patienter.' },

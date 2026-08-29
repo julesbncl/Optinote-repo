@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const rateLimit = checkRateLimit(`ai:adjust-planning:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
+    const rateLimit = await checkRateLimit(`ai:adjust-planning:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Trop de requêtes. Réessaie dans ${rateLimit.resetIn}s` },

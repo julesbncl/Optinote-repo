@@ -1,13 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import { Logo } from '@/components/ui/Logo'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CLASS_LEVELS, APP_NAME, BETA_ACCESS_WINDOW_START } from '@/lib/constants'
 import { Rocket, Copy, Check, ArrowLeft, Sparkles, PartyPopper, ArrowRight, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: { sitekey: string; callback: (token: string) => void }
+      ) => void
+    }
+  }
+}
 
 export default function BetaWaitlistPage() {
   const siteIsOpen = new Date() >= BETA_ACCESS_WINDOW_START
@@ -16,6 +28,17 @@ export default function BetaWaitlistPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [code, setCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<HTMLDivElement>(null)
+
+  function renderTurnstile() {
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (!siteKey || !turnstileRef.current || !window.turnstile) return
+    window.turnstile.render(turnstileRef.current, {
+      sitekey: siteKey,
+      callback: (token) => setTurnstileToken(token),
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,7 +47,7 @@ export default function BetaWaitlistPage() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, classLevel: classLevel || null }),
+        body: JSON.stringify({ email, classLevel: classLevel || null, turnstileToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur lors de l’inscription')
@@ -102,6 +125,17 @@ export default function BetaWaitlistPage() {
                     </option>
                   ))}
                 </select>
+
+                {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                  <>
+                    <Script
+                      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                      strategy="afterInteractive"
+                      onLoad={renderTurnstile}
+                    />
+                    <div ref={turnstileRef} className="flex justify-center" />
+                  </>
+                )}
 
                 <Button
                   type="submit"

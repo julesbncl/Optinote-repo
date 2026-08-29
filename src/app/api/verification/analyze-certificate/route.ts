@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const rateLimit = checkRateLimit(`verify-certificate:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
+    const rateLimit = await checkRateLimit(`verify-certificate:${user.id}`, RATE_LIMITS.AI_CALLS_PER_MINUTE)
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Trop de tentatives. Réessaie dans ${rateLimit.resetIn}s` },

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Rate limit
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `ai:planning:${user.id}`,
       RATE_LIMITS.AI_CALLS_PER_MINUTE
     )
