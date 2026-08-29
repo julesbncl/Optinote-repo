@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { createClient } from '@/lib/supabase/client'
-import { checkIsPro } from '@/lib/hooks/useIsPro'
+import { hasRealSubscription } from '@/lib/hooks/useIsPro'
 import {
   PRICING_PLANS,
   VALID_PROMO_CODES,
@@ -65,7 +65,7 @@ function PricingContent() {
         .eq('id', user.id)
         .single()
 
-      const isSubscribed = checkIsPro(profile)
+      const isSubscribed = hasRealSubscription(profile)
 
       if (isSubscribed && profile) {
         const tier = profile.subscription_tier === 'annual' ? 'annual' : 'monthly'

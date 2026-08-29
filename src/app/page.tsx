@@ -34,13 +34,13 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-surface selection:bg-primary-100 selection:text-primary-900">
       {/* ═══════════════════════════════════════════════════════
-          BANDEAU BETA
+          BANDEAU ACCÈS PRO GRATUIT (avant le lancement payant)
           ═══════════════════════════════════════════════════════ */}
       <Link
-        href="/beta"
+        href="/register"
         className="block bg-gradient-to-r from-primary-600 to-accent-600 text-white text-center py-1 px-2 text-[9px] sm:text-xs font-semibold hover:opacity-90 transition-opacity"
       >
-        🚀 Beta · Lancement officiel le 1er septembre — Rejoins la liste d&apos;attente pour un accès Pro gratuit →
+        🚀 OptiNote Pro offert à tous jusqu&apos;au 1er septembre — Crée ton compte gratuitement →
       </Link>
 
       {/* ═══════════════════════════════════════════════════════

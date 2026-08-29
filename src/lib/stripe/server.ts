@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { hasBetaAccess } from '@/lib/constants'
+import { isFreeAccessPeriodActive } from '@/lib/constants'
 import type { Profile } from '@/types/database'
 
 // Lazy & dynamic initialization of Stripe SDK instance
@@ -52,9 +52,9 @@ export const stripe = new Proxy({} as Stripe, {
  * Checks if a user has an active paid subscription (monthly or annual).
  */
 export function isUserSubscribed(profile: Profile | null): boolean {
+  if (isFreeAccessPeriodActive()) return true
   if (!profile) return false
   if (profile.is_pro === true) return true
-  if (hasBetaAccess(profile)) return true
   const activeStatuses = ['active', 'trialing']
   const tier = profile.subscription_tier || 'free'
   const status = profile.subscription_status || 'inactive'

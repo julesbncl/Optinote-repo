@@ -170,17 +170,9 @@ function RegisterForm() {
         <div className="mt-1 p-1 sm:p-1.5 bg-primary-50/90 border border-primary-200/80 rounded-md sm:rounded-lg text-left text-[7.5px] sm:text-xs text-primary-900 flex items-center gap-1">
           <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-600 flex-shrink-0" />
           <span>
-            <strong>Essai gratuit Découverte :</strong> 1 fiche offerte + simulateur gratuit.
+            <strong>Accès Pro 100% gratuit</strong> jusqu&apos;au 1er septembre, sans code ni carte bancaire.
           </span>
         </div>
-
-        {/* Beta Mention Ultra-Compact */}
-        <p className="mt-1 text-[7px] sm:text-[10px] text-text-tertiary">
-          🚀 OptiNote est en beta jusqu&apos;au 1er septembre —{' '}
-          <Link href="/beta" className="font-bold text-primary-600 hover:underline">
-            profite d&apos;un accès Pro gratuit via la liste d&apos;attente
-          </Link>
-        </p>
       </div>
 
       {/* Error Alert Banner */}
