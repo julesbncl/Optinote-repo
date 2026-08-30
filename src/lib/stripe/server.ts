@@ -54,6 +54,7 @@ export const stripe = new Proxy({} as Stripe, {
 export function isUserSubscribed(profile: Profile | null): boolean {
   if (isFreeAccessPeriodActive()) return true
   if (!profile) return false
+  if (profile.is_creator_partner) return true
   if (profile.is_pro === true) return true
   const activeStatuses = ['active', 'trialing']
   const tier = profile.subscription_tier || 'free'

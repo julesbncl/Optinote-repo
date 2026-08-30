@@ -25,6 +25,7 @@ export interface Profile {
   subscription_tier?: 'free' | 'monthly' | 'annual'
   subscription_status?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | 'inactive'
   is_pro?: boolean
+  is_creator_partner?: boolean
   beta_access_redeemed_at?: string | null
   is_verified?: boolean
   school_certificate_url?: string | null

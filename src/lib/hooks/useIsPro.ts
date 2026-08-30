@@ -30,13 +30,16 @@ export function hasRealSubscription(profile: Partial<Profile> | null | undefined
  *
  * Pro is determined by:
  *  1. The temporary free-access period (everyone is Pro until it ends), OR
- *  2. The explicit `is_pro` column on the profile, OR
- *  3. An active/trialing subscription on a monthly or annual tier.
+ *  2. Being a creator partner (owner of an active creator code — permanent
+ *     perk, doesn't end on September 1st like the general free period), OR
+ *  3. The explicit `is_pro` column on the profile, OR
+ *  4. An active/trialing subscription on a monthly or annual tier.
  *
  * Returns `{ isPro, profile, loading }`.
  */
 export function checkIsPro(profile: Partial<Profile> | null | undefined): boolean {
   if (isFreeAccessPeriodActive()) return true
+  if (profile?.is_creator_partner) return true
   return hasRealSubscription(profile)
 }
 

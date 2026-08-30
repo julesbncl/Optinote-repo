@@ -126,6 +126,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: error.code === '23505' ? 409 : 500 })
   }
 
+  // Accès Pro gratuit permanent pour le créateur, en échange de la promotion
+  // qu'il fait du site — reste actif même après la fin de l'accès gratuit
+  // général du 1er septembre (voir isUserSubscribed/checkIsPro).
+  if (ownerUserId) {
+    await admin.from('profiles').update({ is_creator_partner: true }).eq('id', ownerUserId)
+  }
+
   return NextResponse.json({ creator: created })
 }
 
@@ -145,13 +152,31 @@ export async function PATCH(request: Request) {
   const admin = createAdminClient()
 
   if (typeof isActive === 'boolean') {
-    const { error } = await admin
+    const { data: updatedCode, error } = await admin
       .from('creator_codes')
       .update({ is_active: isActive })
       .eq('id', creatorCodeId)
+      .select('owner_user_id')
+      .single()
     if (error) {
       console.error('Error updating creator code status:', error)
       return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 })
+    }
+
+    // Recalcule l'accès Pro gratuit du créateur : reste actif tant qu'il
+    // possède au moins un code encore actif (gère aussi le cas où il en a
+    // plusieurs).
+    if (updatedCode?.owner_user_id) {
+      const { count: activeCodesCount } = await admin
+        .from('creator_codes')
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_user_id', updatedCode.owner_user_id)
+        .eq('is_active', true)
+
+      await admin
+        .from('profiles')
+        .update({ is_creator_partner: (activeCodesCount || 0) > 0 })
+        .eq('id', updatedCode.owner_user_id)
     }
   }
 
