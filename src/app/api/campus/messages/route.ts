@@ -31,8 +31,34 @@ export async function GET(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
     // 1. Récupération des messages d'un salon de groupe
     if (channelId) {
+      // Un salon marqué privé (groupe d'étude créé avec isPrivate) n'est lisible
+      // que par ses membres — les salons publics (spécialités, général) restent
+      // ouverts à tout utilisateur authentifié.
+      const { data: channel } = await supabase
+        .from('chat_channels')
+        .select('is_private')
+        .eq('id', channelId)
+        .single()
+
+      if (channel?.is_private) {
+        const { data: membership } = await supabase
+          .from('channel_members')
+          .select('user_id')
+          .eq('channel_id', channelId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!membership) {
+          return NextResponse.json({ error: 'Accès réservé aux membres de ce salon' }, { status: 403 })
+        }
+      }
+
       const { data: messages, error } = await supabase
         .from('messages')
         .select('*, profiles:user_id(full_name, avatar_url, class_level)')

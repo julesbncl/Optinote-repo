@@ -805,6 +805,12 @@ function CampusHubContent() {
       .update({ is_visible_on_school: nextVal })
       .eq('id', profile.id)
 
+    if (error) {
+      console.error('Error updating visibility:', error)
+      toast.error('Erreur lors de la mise à jour de la visibilité.')
+      return
+    }
+
     setIsVisible(nextVal)
     toast.success(
       nextVal

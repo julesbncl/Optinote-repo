@@ -308,7 +308,7 @@ export default function PlanningPage() {
   async function handleExecuteScanTimetable(e: React.FormEvent) {
     e.preventDefault()
     if (!scanPhotoUrl) {
-      toast.error('Veuillez importer une photo de votre emploi du temps.')
+      toast.error('Importe une photo de ton emploi du temps.')
       return
     }
 

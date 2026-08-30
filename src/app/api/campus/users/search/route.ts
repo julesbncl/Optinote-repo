@@ -8,6 +8,13 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q')?.trim() || ''
 
     const supabase = await createClient()
+    const {
+      data: { user: viewer },
+    } = await supabase.auth.getUser()
+
+    if (!viewer) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
 
     let query = supabase
       .from('profiles')

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { reportMessageSchema } from '@/lib/validators/campus'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,14 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const rateLimit = await checkRateLimit(`campus-report:${user.id}`, 10, 60_000)
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Trop de signalements. Réessaie dans ${rateLimit.resetIn}s` },
+        { status: 429 }
+      )
     }
 
     const body = await request.json()

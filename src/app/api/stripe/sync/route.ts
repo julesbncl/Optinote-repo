@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
     }
 
     let activeSubscription: Stripe.Subscription | null | undefined = null
-    const customerList = customerId ? [customerId] : []
 
     // Si on a un customerId, vérifier toutes ses souscriptions
     if (customerId) {

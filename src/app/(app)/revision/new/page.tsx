@@ -257,7 +257,7 @@ export default function NewRevisionPage() {
       const rawText = sheetText.trim()
 
       if (!rawText || rawText.length === 0) {
-        throw new Error('Veuillez saisir ou coller le contenu de votre cours.')
+        throw new Error('Saisis ou colle le contenu de ton cours.')
       }
 
       toast.loading('Génération & synthèse du cours...', { id: 'gen-toast' })

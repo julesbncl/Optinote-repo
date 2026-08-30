@@ -122,7 +122,7 @@ function PrivateMessagesContent() {
         body: JSON.stringify({ friendId, action: 'accept' }),
       })
       if (res.ok) {
-        toast.success('Demande d’ami acceptée ! Vous pouvez discuter en privé 🎉')
+        toast.success('Demande d’ami acceptée ! Tu peux discuter en privé 🎉')
         const dataRes = await fetch('/api/campus/friends')
         if (dataRes.ok) {
           const data = await dataRes.json()
@@ -264,7 +264,7 @@ function PrivateMessagesContent() {
                 Aucune conversation sélectionnée
               </h2>
               <p className="text-xs text-text-secondary max-w-sm">
-                Sélectionne un ami dans la liste à gauche pour ouvrir votre discussion privée instantanée ou explore la carte pour faire de nouvelles rencontres.
+                Sélectionne un ami dans la liste à gauche pour ouvrir ta discussion privée instantanée ou explore la carte pour faire de nouvelles rencontres.
               </p>
               <Link href="/campus/map">
                 <button

@@ -13,6 +13,10 @@ export async function GET() {
       data: { user: viewer },
     } = await supabase.auth.getUser()
 
+    if (!viewer) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
     const { data: dbUsers, error } = await supabase
       .from('profiles')
       .select('id, full_name, email, avatar_url, school_name, class_level, specialties, academic_goal, post_bac_target, is_visible_on_school, is_pro, is_verified, preferences, updated_at')

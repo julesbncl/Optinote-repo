@@ -82,6 +82,17 @@ export async function POST(request: NextRequest) {
 
     const { subjectId, value, outOf, coefficient, label, trimester, date, isSimulated } = parsed.data
 
+    const { data: subject } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('id', subjectId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!subject) {
+      return NextResponse.json({ error: 'Matière introuvable' }, { status: 404 })
+    }
+
     if (!isSimulated) {
       const { data: profile } = await supabase
         .from('profiles')

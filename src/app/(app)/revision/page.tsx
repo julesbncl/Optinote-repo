@@ -358,7 +358,7 @@ export default function RevisionPage() {
 - **Dossier / Matière** : **${folderName}**
 - **Date d'importation** : ${new Date().toLocaleDateString('fr-FR')}
 
-> Ce document PDF est stocké tel quel dans votre espace de révision sans modification par IA.`
+> Ce document PDF est stocké tel quel dans ton espace de révision sans modification par IA.`
 
     try {
       const {
