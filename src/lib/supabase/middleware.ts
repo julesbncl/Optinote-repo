@@ -46,13 +46,18 @@ export async function updateSession(request: NextRequest) {
     return new NextResponse(null, { status: 204, headers: preflightHeaders })
   }
 
-  // Blocage strict des origines non autorisées sur l'API
-  if (isApiRoute && origin && !isStripeWebhook && !ALLOWED_ORIGINS.includes(origin)) {
-    return NextResponse.json(
-      { error: 'Accès interdit : Origine non autorisée par la politique CORS' },
-      { status: 403 }
-    )
-  }
+  // Note : on ne bloque plus (403) une requête réelle sur la seule base d'un
+  // en-tête Origin manquant/inattendu. Ce header n'est pas fiable à 100% dans
+  // tous les contextes réseau (proxy de filtrage des lycées, PWA sur écran
+  // d'accueil, certains navigateurs/anti-virus) et le bloquer a déjà cassé
+  // des actions légitimes (ex: rejoindre un lycée) pour de vrais utilisateurs
+  // connectés. La vraie protection contre un site tiers qui utiliserait la
+  // session d'un utilisateur reste le cookie de session en SameSite=Lax
+  // (jamais envoyé sur une requête POST/PUT/DELETE cross-site) combinée à la
+  // vérification d'authentification systématique dans chaque route API.
+  // ALLOWED_ORIGINS continue de piloter les en-têtes CORS de la réponse
+  // ci-dessous (empêche un site tiers de LIRE la réponse), et la vérification
+  // stricte reste active sur le preflight OPTIONS au-dessus.
 
   // ═════════════════════════════════════════════════════════
   // 2. Rate Limiting Anti-Brute-Force & Anti-Abus
